@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="utf-8">
+    <title>Embryo 1</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='kid_static/favicon.ico') }}">
+
+    <style>
+
+        body {
+            font-family: 'roboto_light', sans-serif;
+            margin: 0;
+            text-align: center;
+            background-color: black;
+        }
+
+        #logout-button {
+            position: absolute;
+            margin: 2vw;
+            top: 0;
+            right: 0;
+        }
+        button {
+            padding: 4px 10px;
+            border-radius: 8px;
+            border: 3px solid hsl(150, 40%, 60%);
+            background-color: hsl(150, 25%, 25%);
+            color: white;
+            font-weight: bold;
+        }
+        button:hover {
+            border: 3px solid hsl(234, 100%, 75%);
+            /* Same as contrast-color */
+            background-color: hsl(234, 60%, 90%);
+            color: black;
+        }
+
+        #calendar-box {
+            display: flex;
+            flex-direction: column;
+        }
+
+        h1 {
+            margin: 3rem 0;
+            color: white;
+        }
+
+        .event-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0.4rem 1rem;
+            background-color: hsl(0, 0%, 15%);
+            color: hsl(0, 0%, 75%);
+        }
+
+        #right-now {
+            background-color: hsl(0, 0%, 0%);
+            color: white;
+        }
+
+        #weight {
+            font-family: Menlo, Monaco, 'Courier New', monospace;
+        }
+
+        .weight-context {
+            color: hsl(0, 0%, 60%);
+        }
+
+        .countdown-event {
+            color: black;
+        }
+
+        .event-box > * {
+            margin: 0.3rem 0;
+        }
+
+        .event-box img {
+            /* object-fit: cover; */
+            /* width: 20vh; */
+            height: 20vh;
+            border-radius: 3vh;
+            pointer-events: none;
+        }
+
+        .bold {
+            font-weight: bold;
+        }
+
+        .smaller {
+            font-size: 0.8rem;
+        }
+
+        hr {
+            border: 2px solid hsl(0, 0%, 30%);
+            margin: 0;
+        }
+
+    </style>
+    
+</head>
+
+<body>
+
+    <!-- DEBUG TIME: ctrlF-debug-time //// -->
+    <!-- <p>Actual Time: </p>
+    <h2 id="actual-time"></h2>
+    <hr>
+    <p>Drift: </p>
+    <h3 id="time-drift"></h3>
+    <hr>
+    <p>Tick Time: </p>
+    <h2 id="tick-time"></h2> -->
+
+    <a class="add-href-args" href="{{ url_for('init_calendar') }}"><button>Start over</button></a>
+    <a class="add-href-args" href="{{ url_for('add_event') }}"><button>Add Event</button></a>
+
+    <h1 id="title"></h1>
+
+    <div id="calendar-box" class="larger">
+        <hr style="order: -1">
+        <!-- The rest added with JavaScript. -->
+    </div>
+
+</body>
+
+<script>
+
+
+let debugTimeJumpDays = 0;
+let debugTimeJumpHours = 0;
+//
+// Comment out block below to not debug.
+// // DEBUG TIME: ctrlF-debug-time ////
+// window.addEventListener('keydown', e => {
+//     if (e.key === '=') debugTimeJumpDays += 1;
+//     else if (e.key === '-') debugTimeJumpDays -= 1;
+//     else if (e.key === ']') debugTimeJumpHours += 1;
+//     else if (e.key === '[') debugTimeJumpHours -= 1;
+// });
+// const debugTestNow = new Date('September 1, 2023 23:59:43');  // Change to test date and time.
+// const nowMsecOffset = debugTestNow.getTime() - Date.now();
+
+
+// INIT VARIABLES
+let wk0dy0;
+// const wk0dy0 = dateObjFromEventData([2023, 6, 17]);
+let topHue = 0;  // Top hue starts as red.
+let now;
+let events;
+
+
+// WEIGHT COUNTER VARIABLES
+let weightAuditIntervalId;
+let weightTickIntervalId = null;
+let auditWeightValuesDue = false;
+const msecsPerWeightTick = 40;
+const checkWeightDriftMins = 0.25;
+const msecsPerWeek = 604800000;  // 7 * 24 * 60 * 60 * 1000
+const weeksPerSec = 1 / 604800;  // 1 / (7 * 24 * 60 * 60)
+const weightData = {};
+const gramsByWeekNum = [ ,,,,,,,, 1, 2, 4, 7, 14, 23, 43, 70, 100, 140, 190, 240, 300, 360, 430, 501, 600, 660, 760, 875, 1005, 1153, 1319, 1502, 1702, 1918, 2146, 2383, 2622, 2859, 3083, 3288];  // No data before week 8 or after week 39.
+const poundsByWeekNum = [];
+for (let n = 0; n < gramsByWeekNum.length; n++) {
+    const grams = gramsByWeekNum[n];
+    if (typeof grams === 'undefined') continue;
+    const pounds = grams / 453.6;  // Convert grams to pounds.
+    poundsByWeekNum[n] = pounds;
+};
+
+
+// // SCRIPT
+// fetch('/data')
+//     .then((response) => response.json())
+//     .then((data) => {
+//         events = data;
+//         initAll();
+//         window.addEventListener('focus', scheduleAudit);
+//     });
+events = [
+    {
+        "eventName": "Due Date",
+        "eventGestTime": [
+            40,
+            0,
+        ],
+    },
+    {
+        "eventName": "Start Third Trimester",
+        "eventGestTime": [
+            27,
+            0,
+        ],
+    },
+    // {
+    //     "eventName": "Appointment",
+    //     "eventGestTime": [
+    //         25,
+    //         4,
+    //     ],
+    //     "eventTime": [
+    //         10,
+    //         30,
+    //         "am",
+    //     ],
+    // },
+    {
+        "eventName": "Start Second Trimester",
+        "eventGestTime": [
+            13,
+            0,
+        ],
+    },
+    // {
+    //     "eventName": "Ultrasound",
+    //     "eventGestTime": [
+    //         12,
+    //         5,
+    //     ],
+    // },
+    {
+        "eventName": "Start First Trimester",
+        "eventGestTime": [
+            0,
+            0,
+        ],
+    },
+];
+initAll();
+window.addEventListener('focus', scheduleAudit);
+
+
+// FUNCTIONS
+
+
+// Weight Counter
+
+function setWeightContextDisplay(setting) {
+    document.getElementById('weight').style.display = setting;
+};
+
+function getCurrentWeightData() {
+    const result = {};
+    const debugOffset = typeof nowMsecOffset === 'undefined' ? 0 : nowMsecOffset;
+    const weeksPregnant = (Date.now() + debugOffset - wk0dy0.getTime()) / msecsPerWeek;
+    result.partialWeekTimeActual = weeksPregnant % 1;
+    result.weekStartWeight = poundsByWeekNum[Math.floor(weeksPregnant)];
+    result.weekEndWeight = poundsByWeekNum[Math.floor(weeksPregnant) + 1];
+    weightData.outOfRange = typeof result.weekStartWeight === 'undefined' || typeof result.weekEndWeight === 'undefined';
+    if (weightData.outOfRange) {
+        clearInterval(weightTickIntervalId);
+        weightTickIntervalId = null;
+        setWeightContextDisplay('none');
+    };
+    return result;
+};
+
+function updateWeightRate(currentWeightData) {
+    const weightDiff = currentWeightData.weekEndWeight - weightData.currentWeight;
+    const msecsRemainingInWeek = (1 - currentWeightData.partialWeekTimeActual) * msecsPerWeek;
+    const weightChangePerMsec = weightDiff / msecsRemainingInWeek;
+    const weightChangePerTick = weightChangePerMsec * msecsPerWeightTick;
+    weightData.weightChangePerTick = weightChangePerTick;
+    weightData.decimalPlaces = Math.max(Math.floor(Math.log10(weightChangePerTick)) * -1, 0);
+};
+
+function updateWeightValues(currentWeightData) {
+    const weightDiff = currentWeightData.weekEndWeight - currentWeightData.weekStartWeight;
+    const currentWeight = currentWeightData.partialWeekTimeActual * weightDiff + currentWeightData.weekStartWeight;
+    weightData.currentWeight = currentWeight;
+    weightData.weekEndWeight = currentWeightData.weekEndWeight;
+};
+
+function initWeightData() {
+    const currentWeightData = getCurrentWeightData();
+    if (weightData.outOfRange) return;
+    updateWeightValues(currentWeightData);
+    updateWeightRate(currentWeightData);
+};
+
+function auditWeightValues() {
+
+    auditWeightValuesDue = false;
+
+    const currentWeightData = getCurrentWeightData();
+    if (weightData.outOfRange) return;
+    if (weightTickIntervalId === null) {
+        initWeightCounter();
+        return;
+    };
+
+    const partialWeekTimeFromWeight = (weightData.currentWeight - currentWeightData.weekStartWeight) / (currentWeightData.weekEndWeight - currentWeightData.weekStartWeight);
+    const driftSecs = Math.abs(currentWeightData.partialWeekTimeActual - partialWeekTimeFromWeight) / weeksPerSec;
+    // console.log('weight driftSecs:', driftSecs);
+
+    if (driftSecs > 1) {
+        // One second error tolerance exceeded.
+        // console.log('One second error tolerance exceeded.');
+        updateWeightValues(currentWeightData);
+    };
+
+    updateWeightRate(currentWeightData);
+};
+
+function scheduleAudit() {
+    auditWeightValuesDue = true;
+    if (weightTickIntervalId === null) auditWeightValues();
+};
+
+function displayCurrentWeight() {
+    const latestWeightStr = weightData.outOfRange ? '' : weightData.currentWeight.toFixed(weightData.decimalPlaces);
+    document.getElementById('weight-value').innerHTML = latestWeightStr;
+};
+
+function weightTick() {
+    weightData.currentWeight += weightData.weightChangePerTick;
+    displayCurrentWeight();
+    if (weightData.currentWeight >= weightData.weekEndWeight) initWeightData();
+    if (auditWeightValuesDue) auditWeightValues();
+};
+
+function initWeightCounter() {
+    clearInterval(weightTickIntervalId);
+    clearInterval(weightAuditIntervalId);
+    initWeightData();
+    displayCurrentWeight();
+    weightAuditIntervalId = setInterval(scheduleAudit, checkWeightDriftMins * 60000);
+    if (weightData.outOfRange) return;
+    setWeightContextDisplay('block');
+    weightTickIntervalId = setInterval(weightTick, msecsPerWeightTick);
+};
+
+
+// Date Object Creation
+
+function getCurrentDateObj() {
+    // Debug Time ctrlF-debug-time
+    const currentDateObj = typeof nowMsecOffset === 'undefined' ? new Date() : new Date(Date.now() + nowMsecOffset);
+    currentDateObj.setMilliseconds(currentDateObj.getMilliseconds() + 500); 
+        // Compensates for being shown a rounded-down second value.
+        // Changes the probability to 50/50 chance of being shown the time a half-second too early or too late.
+    currentDateObj.setHours(currentDateObj.getHours() + debugTimeJumpHours); 
+    currentDateObj.setDate(currentDateObj.getDate() + debugTimeJumpDays);
+    return currentDateObj;
+};
+
+function initNowObj() {
+    now = getCurrentDateObj();
+};
+
+function midnightOf(dateObj) {
+    const newDateObj = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+    return newDateObj;
+};
+
+function dateObjFromEventData(dateYMD, time12hr) {
+    // dateYMD = [year, month, day]  // Month is a number 1-12 (Jan-Dec)
+    // time12hr = [hour, minute, amOrPm]
+    // If time12hr is not defined, it defaults to 12am.
+    if (typeof time12hr === 'undefined') time12hr = [0, 0, 'am'];
+    const month = dateYMD[1] - 1;  // Convert Jan=1 index to Jan=0 index.
+    const hr24 = time12hr[2] === 'pm' ? time12hr[0] + 12 : time12hr[0];  // Converts 12-hour to 24-hour.
+    const newDateObj = new Date(dateYMD[0], month, dateYMD[2], hr24, time12hr[1]);
+    return newDateObj;
+};
+
+function dateArrayFromPregTime(pregTimeArray) {
+    // pregTimeArray = [weekNum, dayNum]
+    // Return array = [year, month, day]  // Month is a number 1-12 (Jan-Dec)
+    const daysAfterTimeZero = pregTimeArray[0] * 7 + pregTimeArray[1];
+    const dateArray = [
+        wk0dy0.getFullYear(),
+        wk0dy0.getMonth() + 1,
+        wk0dy0.getDate() + daysAfterTimeZero,
+    ];
+    return dateArray;
+};
+
+
+// Date Object Comparison Functions
+
+function sameDay(dateObjA, dateObjB) {
+    if (dateObjA.getFullYear() !== dateObjB.getFullYear()) return false;
+    if (dateObjA.getMonth() !== dateObjB.getMonth()) return false;
+    if (dateObjA.getDate() !== dateObjB.getDate()) return false;
+    return true;
+};
+
+function checkLeapYear(year) {
+    const boolean = new Date(year, 1, 29).getDate() === 29;
+    return boolean;
+};
+
+function getDaysFromNewYear(dateObj, whichNewYear='prev') {
+    // WhichNewYear is a string, either 'prev' (default) or 'next'.
+    // The year of dateObj only matters if the last day of February is between the dateObj and the new year being checked.
+
+    let dayCount = dateObj.getDate() - 1;  // Add all days within the month of the date.
+
+    // Add all days of the year in the months prior to the date.
+    const daysLongByMonthNum = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];  // Will add day to Feb later if leap year matters.
+    for (let monthNum = 0; monthNum < dateObj.getMonth(); monthNum++) {
+        dayCount += daysLongByMonthNum[monthNum];
+    };
+
+    const leapYear = checkLeapYear(dateObj.getFullYear());
+
+    if (leapYear && dateObj.getMonth() > 1) dayCount += 1;  // Month is after February, so add in leap day.
+
+    if (whichNewYear === 'next') {
+        // Convert to all uncounted days in the year.
+        const daysInYear = leapYear ? 366 : 365;
+        dayCount = daysInYear - dayCount;
+    };
+
+    return dayCount;
+};
+
+function getDifferenceDHMS(dateObjA, dateObjB) {
+    // Return array = [days, hours, minutes, seconds, antiChronological].
+        // If dateObjB is not before dateObjA, all values are 0 or positive, and antiChronological is false.
+        // If dateObjB is before dateObjA, all values are 0 or negative, and antiChronological is true.
+
+    const dayOfA_TimeOfB = new Date(
+        dateObjA.getFullYear(), dateObjA.getMonth(), dateObjA.getDate(),  // Day values of A.
+        dateObjB.getHours(), dateObjB.getMinutes(), dateObjB.getSeconds()  // Time values of B.
+    );
+
+    // Get HMS difference.
+    let secsDiff = Math.ceil((dayOfA_TimeOfB.getTime() - dateObjA.getTime()) / 1000);  // Total seconds difference.
+    let hoursDiff = Math.floor(secsDiff / 3600);
+    secsDiff -= hoursDiff * 3600;  // Less hours difference.
+    let minsDiff = Math.floor(secsDiff / 60);
+    secsDiff -= minsDiff * 60;  // Less minutes difference.
+
+    let daysDiff = getDaysFromNewYear(dayOfA_TimeOfB, 'next');  // Get days duration of the partial year from dayOfA_TimeOfB to the start of the next year.
+    daysDiff += getDaysFromNewYear(dateObjB, 'prev');  // Get days duration of the partial year to dateObjB from the start of that year.
+
+    // Add days in all whole years between dayOfA_TimeOfB and dateObjB, not counting the partial year durations already counted above.
+    // Can't come into play unless dayOfA_TimeOfB is before dateObjB.
+    for (let year = dayOfA_TimeOfB.getFullYear() + 1; year < dateObjB.getFullYear(); year++) {
+        if (checkLeapYear(year)) daysDiff += 366;
+        else daysDiff += 365;
+    };
+
+    // Subtracts days in all years between dayOfA_TimeOfB and dateObjB including the years of both dates.
+    // Can't come into play unless dayOfA_TimeOfB is in the same year as dateObjB or later.
+    for (let year = dayOfA_TimeOfB.getFullYear(); year >= dateObjB.getFullYear(); year--) {
+        if (checkLeapYear(year)) daysDiff -= 366;
+        else daysDiff -= 365;
+    };
+
+    if (hoursDiff < 0) {
+        // Carry negative hour value so that HMS are all 0 or positive.
+        daysDiff -= 1;
+        hoursDiff += 24;
+    };
+
+    const antiChronological = daysDiff < 0;  // Checks if daysDiff is negative, indicating that the dates are not in chronological order.
+
+    const result = [daysDiff, hoursDiff, minsDiff, secsDiff, antiChronological];
+
+    if (antiChronological) {
+        // Convert to values <= 0.
+        const changeValues = [1, -23, -59, -60];  // Changes planned to be made in each place DHMS.
+        const valueLimits = [Infinity, 24, 60, 60];  // The value at each place if, when reached, must be carried to the next place.
+        for (let n = 3; n >= 0; n--) {
+            let newValue = result[n] + changeValues[n];
+            if (newValue + valueLimits[n] <= 0) {
+                // Carry one unit from next place.
+                newValue += valueLimits[n];
+                changeValues[n - 1] -= 1;
+            };
+            result[n] = newValue;
+        };
+    };
+
+    return result;
+};
+
+function getPregTime(dateObj) {
+    // Return array = [weekNum, dayNum, beforeWk0Dy0]
+    const diffDHMS = getDifferenceDHMS(wk0dy0, dateObj);
+    const weekNum = Math.floor(diffDHMS[0] / 7);
+    const dayNum = diffDHMS[0] - weekNum * 7;
+    return [weekNum, dayNum, diffDHMS[4]];
+};
+
+
+// CSS
+
+function rotateColors() {
+    const allCountdownElems = document.querySelectorAll('.countdown-event');
+    const hueStep = 30;  // hr, box, hr, box, ...
+    let elemHue = topHue;
+    for (const elem of allCountdownElems) {
+        elem.style.backgroundColor = `hsl(${elemHue}, 100%, 98%)`;
+        for (const innerElem of document.querySelectorAll(`#${elem.id} .countdown-color`)) {
+            innerElem.style.color = `hsl(${elemHue}, 100%, 35%)`;
+        };
+        elemHue = (elemHue + hueStep) % 360;
+        for (const innerElem of document.querySelectorAll(`#${elem.id} + hr`)) {
+            innerElem.style.borderColor = `hsl(${elemHue}, 15%, 50%)`;
+        };
+        elemHue = (elemHue + hueStep) % 360;
+    };
+
+    document.getElementById('right-now').style.color = `hsl(${elemHue}, 100%, 94%)`;
+
+    // Rotate topHue for next time rotateColors is called, and change top hr color.
+    topHue = (360 + topHue - hueStep * 3) % 360;
+        // Subtract 3 steps: 1 step for top hr (changed next line), and 2 for the color box and hr next time rotateColors is called.
+    document.querySelector('hr').style.borderColor = `hsl(${topHue}, 15%, 50%)`;
+    topHue = (topHue + hueStep) % 360;
+};
+
+
+// Formatting
+
+function padWithZeroes(num, minDigits=2) {
+    return String(num).padStart(minDigits, '0');
+};
+
+function dateString(dateObj, includeTime=false, includeSecs=false, includeMsecs=false) {
+
+    const weekdayKey = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const weekdayIndex = dateObj.getDay();
+    const weekdayStr = weekdayKey[weekdayIndex];
+
+    const monthKey = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const monthStr = monthKey[dateObj.getMonth()];
+
+    const dayStr = padWithZeroes(dateObj.getDate())
+
+    let timeStr = '';
+    if (includeTime) {
+        const hours = (dateObj.getHours() + 11) % 12 + 1;  // Convert 0-23 hours to 12-1-11 am/pm hours.
+        const amOrPm = dateObj.getHours() > 11 ? 'PM' : 'AM';
+        const secs = includeSecs ? `:${padWithZeroes(dateObj.getSeconds())}` : '';
+        const msecs = includeMsecs ? `.${padWithZeroes(dateObj.getMilliseconds(), 3)}` : '';
+        timeStr = `${hours}:${padWithZeroes(dateObj.getMinutes())}${secs}${msecs} ${amOrPm}<br>`;
+    };
+    
+    const dateStr = `${timeStr}${weekdayStr}, ${monthStr} ${dayStr}, ${dateObj.getFullYear()}`;
+
+    return dateStr;
+};
+
+function makeIdString(string) {
+    const alphaNumArray = '0123456789abcdefghijklmnopqrstuvwxyz'.split('');
+    const alphaNumSet = new Set(alphaNumArray);
+    const lowerString = string.toLowerCase();
+    let idString = '';
+    for (let n = 0; n < lowerString.length; n++) {
+        const char = lowerString[n];
+        if (alphaNumSet.has(char)) idString += char
+        else idString += '-';
+    };
+    return idString;
+};
+
+
+// Manipulate HTML and data.
+
+function updateDebugHTML(actualNowDateObj, timeDriftMsecs) {
+    // // Comment out all code inside function to not debug.
+    // // DEBUG TIME: ctrlF-debug-time ////
+    // document.getElementById('tick-time').innerHTML = dateString(now, true, true, true);
+    // document.getElementById('actual-time').innerHTML = dateString(actualNowDateObj, true, true, true);
+    // document.getElementById('time-drift').innerHTML = timeDriftMsecs + ' msecs';
+};
+
+function initEvent(eventObj) {
+
+    const additionalClasses = ['event-box'];
+
+    let innerHTML = '';
+    if (eventObj.eventElemId === 'right-now') {
+        innerHTML += `<div class="event-time">${dateString(eventObj.eventDateObj, true, true)}</div>`;
+    } else {
+        const includeTime = 'eventTime' in eventObj;
+        innerHTML += `<div class="event-time">${dateString(eventObj.eventDateObj, includeTime)}</div>`;
+    };
+
+    if (eventObj.timeUntil[4] === false) {
+        // Event is not in the past.
+        additionalClasses.push('countdown-event');
+        innerHTML += `
+            <div class="countdown-box">
+                <span class="bold dy-value">${eventObj.timeUntil[0]}</span><span class="countdown-color">d </span>
+                <span class="bold hr-value smaller">${padWithZeroes(eventObj.timeUntil[1])}</span><span class="smaller countdown-color">h </span>
+                <span class="bold min-value smaller">${padWithZeroes(eventObj.timeUntil[2])}</span><span class="smaller countdown-color">m </span>
+                <span class="bold sec-value smaller">${padWithZeroes(eventObj.timeUntil[3])}</span><span class="smaller countdown-color">s</span>
+            </div>
+        `;
+    };
+
+    innerHTML += `<h3>${eventObj.eventName}</h3>`;
+
+    if (eventObj.eventElemId === 'right-now') {
+        innerHTML += '<p id="weight"><span class="weight-context smaller">Estimated Weight: </span><br/><span id="weight-value"></span><span class="weight-context smaller">lbs</span></p>';
+    };
+
+    const pregTime = getPregTime(eventObj.eventDateObj);
+    if (pregTime[2] === false || eventObj.eventElemId === 'right-now') {  // Always include pregTime with right-now.
+        // EventDateObj is not before wk0dy0.
+        innerHTML += `
+        <div>
+            <span class="bold preg-wk-value">${pregTime[0]}</span><span class="smaller"> weeks </span>
+            <span class="bold preg-dy-value">${pregTime[1]}</span><span class="smaller"> days</span>
+        </div>
+        `;
+    };
+
+    if ('photoPath' in eventObj) {
+        innerHTML += `<img src="../../static/kid_static/temp_site_data/event_photos/${eventObj.photoPath}" onerror="this.style.display='none'" />`;
+    };
+
+    const eventElem = document.createElement('div');
+    eventElem.setAttribute('id', eventObj.eventElemId);
+    eventElem.setAttribute('class', additionalClasses.join(' '));
+    eventElem.style.order = eventObj.order * 2;  // Make room for hr elements in between.
+    eventElem.innerHTML = innerHTML;
+
+    const hrElem = document.createElement('hr');
+    hrElem.setAttribute('class', 'hr-after-event');
+    hrElem.style.order = eventObj.order * 2 + 1;
+
+    const calElem = document.getElementById('calendar-box');
+    calElem.appendChild(eventElem);
+    calElem.appendChild(hrElem);
+};
+
+function initNowEvent(orderNum) {
+    const todayObj = {
+        eventName: 'Now',
+        eventElemId: 'right-now',
+        order: orderNum,
+        eventDateObj: now,
+        timeUntil: [0, 0, 0, -1, true],  // Indicates that event has already happened. No countdown.
+        // EventDate and eventTime omitted. Needed only for countdown events in future.
+    };
+    initEvent(todayObj);
+};
+
+function initDataFromRequestArgs() {
+
+    for (const elem of document.getElementsByClassName('add-href-args')) {
+        elem.href = elem.href + window.location.search;  // Add request params, i.e. ?chick=corea&miles=davis
+    };
+
+    const requestParams = new URLSearchParams(window.location.search);
+
+    document.getElementById('title').innerHTML = requestParams.get('n');
+
+    const dateArray = [
+        now.getFullYear(),
+        parseInt(requestParams.get('m'), 10),
+        parseInt(requestParams.get('d'), 10),
+    ];
+    
+    if (Number.isNaN(dateArray[1])) {
+        // Request argument is not valid.
+        dateArray[1] = 1;
+    };
+    if (Number.isNaN(dateArray[2])) {
+        // Request argument is not valid.
+        dateArray[2] = 1;
+    };
+
+    const customEvents = JSON.parse(requestParams.get('e'));
+    console.log(customEvents);
+    events.push(...customEvents);
+    ////////// Need to majorly error proof this!!!!
+
+    const dueDateThisYear = dateObjFromEventData(dateArray);
+    if (now.getTime() > dueDateThisYear.getTime()) {
+        // Using current year yields a due date in the past. Use next year for due date.
+        dateArray[0] += 1;
+    };
+    dateArray[2] -= 280;  // Subtract 40 weeks from due date to get wk0dy0.
+    wk0dy0 = dateObjFromEventData(dateArray);
+};
+
+function initAll() {
+
+    initNowObj();
+    initDataFromRequestArgs();
+
+    let needToAddToday = true;
+    let orderNum = 0;
+    for (const event of events) {
+
+        const eventDateArray = 'eventGestTime' in event ? dateArrayFromPregTime(event.eventGestTime, event.eventTime) : event.eventDate;
+        event.eventDateObj = dateObjFromEventData(eventDateArray, event.eventTime);
+        event.timeUntil = getDifferenceDHMS(now, event.eventDateObj);
+        event.order = orderNum;
+
+        if (needToAddToday && now.getTime() > event.eventDateObj.getTime()) {
+            // This is the first event in event ordering that has already happened.
+            initNowEvent(orderNum - 1);
+            needToAddToday = false;
+        };
+
+        event.eventElemId = makeIdString(`event-${orderNum / 2}-${event.eventName}`);
+        initEvent(event);
+        orderNum += 2;
+    };
+
+    if (needToAddToday) initNowEvent(orderNum - 1);
+
+    rotateColors();
+    setTimeout(secondTick, 1000);
+    initWeightCounter();
+};
+
+function reinitAll() {
+    // Delete HTML and initAll again.
+    for (const event of events) {
+        document.getElementById(event.eventElemId).remove();
+    };
+    for (const elem of document.querySelectorAll('#right-now, .hr-after-event')) {
+        elem.remove();
+    };
+    initAll();
+};
+
+
+// Second Tick
+
+function secondTick(secondsToAdd=1, forceCheckPregTime=false) {
+
+    const prevDate = now.getDate();
+    const prevTimestamp = now.getTime();
+    now.setSeconds(now.getSeconds() + secondsToAdd);
+
+    const dayTick = now.getDate() !== prevDate || Math.abs(now.getTime() - prevTimestamp) > 86400000;
+    if (dayTick || forceCheckPregTime) {
+        const nowPregTime = getPregTime(now);
+        document.querySelector('#right-now .preg-wk-value').innerHTML = nowPregTime[0];
+        document.querySelector('#right-now .preg-dy-value').innerHTML = nowPregTime[1];
+    };
+
+    const actualNow = getCurrentDateObj();
+    const timeDrift = now.getTime() - actualNow.getTime();
+
+
+    // HANDLE TIME DRIFT AND FREEZE.
+
+    const tickStretchMsecs = 50;  // The number of msecs to stretch each second +/- while correcting a time drift.
+    let nextTickInMsecs = 1000;  // SetTimeout delay for next tick. May change.
+
+    if (timeDrift > 500) {
+        // Time drift is too far into the future.
+        // console.log('Clock is too far ahead. Reinit all.');  ////
+        reinitAll();
+        const newTimeDrift = now.getTime() - actualNow.getTime();
+        updateDebugHTML(actualNow, newTimeDrift);
+        return;
+
+    } else if (timeDrift + 500 < 0) {
+        // Time drift is too far into the past.
+        // console.log('Clock is too far behind. Jump fix now.');  ////
+        initNowObj();
+        secondTick(0, true);  // Restart immediately.
+        return;
+
+    } else if (timeDrift > tickStretchMsecs) {
+        // Ticks are slightly ahead.
+        // console.log('    Slower tick scheduled.');
+        nextTickInMsecs += tickStretchMsecs;  // Slower tick.
+
+    } else if (timeDrift + tickStretchMsecs < 0) {
+        // Ticks are slightly behind.
+        // console.log('    Faster tick scheduled.');
+        nextTickInMsecs -= tickStretchMsecs;  // Faster tick
+    };
+
+    updateDebugHTML(actualNow, timeDrift);
+
+    let movedNowEvent = false;
+    for (const event of events) {
+
+        if (event.timeUntil[4]) continue;  // Event is already in the past.
+
+        // Recalculate event.timeUntil, and check if this event has happened.
+        event.timeUntil = getDifferenceDHMS(now, event.eventDateObj);
+        if (event.timeUntil[4]) {
+            // This is the first tick that this event has happened and is now in the past.
+
+            for (const elem of document.querySelectorAll(`#${event.eventElemId} .countdown-box`)) elem.remove();  // Remove countdown box.
+
+            const eventElem = document.getElementById(event.eventElemId);
+
+            // Remove the JavaScript added inline styles so that the CSS styling works (grey background and hr).
+            eventElem.style.backgroundColor = null;
+            for (const elem of document.querySelectorAll(`#${event.eventElemId} + hr.hr-after-event`)) elem.style.borderColor = null;
+
+            const eventClassList = eventElem.classList;
+            if (eventClassList.contains('countdown-event')) eventClassList.remove('countdown-event');
+
+            if (movedNowEvent === false) {
+                // Move now element to just before this event.
+                for (const elem of document.querySelectorAll('#right-now')) {
+                    elem.style.order = event.order * 2 - 2;
+                };
+                for (const elem of document.querySelectorAll('#right-now + hr.hr-after-event')) {
+                    elem.style.order = event.order * 2 - 1;
+                };
+                movedNowEvent = true;
+            };
+
+            continue;
+        };
+
+        document.querySelector(`#${event.eventElemId} .dy-value`).innerHTML = event.timeUntil[0];
+        document.querySelector(`#${event.eventElemId} .hr-value`).innerHTML = padWithZeroes(event.timeUntil[1]);
+        document.querySelector(`#${event.eventElemId} .min-value`).innerHTML = padWithZeroes(event.timeUntil[2]);
+        document.querySelector(`#${event.eventElemId} .sec-value`).innerHTML = padWithZeroes(event.timeUntil[3]);
+    };
+
+    document.querySelector('#right-now .event-time').innerHTML = dateString(now, true, true);
+
+    rotateColors();
+    setTimeout(secondTick, nextTickInMsecs);
+};
+
+
+</script>
+
+</html>
