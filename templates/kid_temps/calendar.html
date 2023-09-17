@@ -657,33 +657,52 @@ function initDataFromRequestArgs() {
 
     document.getElementById('title').innerHTML = requestParams.get('n');
 
-    const dateArray = [
+    const dueDateArray = [
         now.getFullYear(),
         parseInt(requestParams.get('m'), 10),
         parseInt(requestParams.get('d'), 10),
     ];
     
-    if (Number.isNaN(dateArray[1])) {
+    if (Number.isNaN(dueDateArray[1])) {
         // Request argument is not valid.
-        dateArray[1] = 1;
+        dueDateArray[1] = 1;
     };
-    if (Number.isNaN(dateArray[2])) {
+    if (Number.isNaN(dueDateArray[2])) {
         // Request argument is not valid.
-        dateArray[2] = 1;
+        dueDateArray[2] = 1;
     };
 
-    const customEvents = JSON.parse(requestParams.get('e'));
-    console.log(customEvents);
-    events.push(...customEvents);
-    ////////// Need to majorly error proof this!!!!
-
-    const dueDateThisYear = dateObjFromEventData(dateArray);
+    const dueDateThisYear = dateObjFromEventData(dueDateArray);
     if (now.getTime() > dueDateThisYear.getTime()) {
         // Using current year yields a due date in the past. Use next year for due date.
-        dateArray[0] += 1;
+        dueDateArray[0] += 1;
     };
-    dateArray[2] -= 280;  // Subtract 40 weeks from due date to get wk0dy0.
-    wk0dy0 = dateObjFromEventData(dateArray);
+    dueDateArray[2] -= 280;  // Subtract 40 weeks from due date to get wk0dy0.
+    wk0dy0 = dateObjFromEventData(dueDateArray);
+
+
+
+
+
+
+
+
+
+
+    const customEventsJson = requestParams.get('e');
+
+    if (customEventsJson === null) return;
+
+    const customEventsArray = JSON.parse(customEventsJson);
+    console.log(requestParams.get('e'))
+    console.log(customEventsArray);
+    events.push(...customEventsArray);
+    ////////// Need to majorly error proof all of this at each step!!!!
+
+};
+
+function eventsSortCompareFunc(eventA, eventB) {
+    return eventB.eventDateObj.getTime() - eventA.eventDateObj.getTime();
 };
 
 function initAll() {
@@ -691,12 +710,23 @@ function initAll() {
     initNowObj();
     initDataFromRequestArgs();
 
+
+    // Create eventDateObj for each event.
+    for (const event of events) {
+        const eventDateArray = 'eventGestTime' in event ? dateArrayFromPregTime(event.eventGestTime, event.eventTime) : event.eventDate;
+        event.eventDateObj = dateObjFromEventData(eventDateArray, event.eventTime);
+    };
+
+    // Sort events.
+    events.sort(eventsSortCompareFunc);
+
+    // Init sorted events.
     let needToAddToday = true;
     let orderNum = 0;
     for (const event of events) {
 
-        const eventDateArray = 'eventGestTime' in event ? dateArrayFromPregTime(event.eventGestTime, event.eventTime) : event.eventDate;
-        event.eventDateObj = dateObjFromEventData(eventDateArray, event.eventTime);
+        // const eventDateArray = 'eventGestTime' in event ? dateArrayFromPregTime(event.eventGestTime, event.eventTime) : event.eventDate;
+        // event.eventDateObj = dateObjFromEventData(eventDateArray, event.eventTime);
         event.timeUntil = getDifferenceDHMS(now, event.eventDateObj);
         event.order = orderNum;
 

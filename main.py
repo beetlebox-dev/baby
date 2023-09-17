@@ -105,26 +105,26 @@ def favicon():
 #     return kid.add_new_event()
 
 
-def sort_events_key(event):
+# def sort_events_key(event):
+#
+#     key_value = 0
+#
+#     if 'eventTime' in event:
+#         key_value += event['eventTime'][1]  # Minute is 0-59.
+#         hours = event['eventTime'][0] % 12  # 12hr is 0-11
+#         if event['eventTime'][2] == 'pm':
+#             hours += 12  # 24hr is 0-23
+#         key_value += hours * 60  # Hour is 0-23
+#
+#     key_value += (event['eventDate'][2] - 1) * 60 * 24  # Day is 0-30.
+#     key_value += (event['eventDate'][1] - 1) * 60 * 24 * 31  # Month is 0-11.
+#     key_value += event['eventDate'][0] * 60 * 24 * 31 * 12  # Year is any integer.
+#
+#     return key_value
 
-    key_value = 0
 
-    if 'eventTime' in event:
-        key_value += event['eventTime'][1]  # Minute is 0-59.
-        hours = event['eventTime'][0] % 12  # 12hr is 0-11
-        if event['eventTime'][2] == 'pm':
-            hours += 12  # 24hr is 0-23
-        key_value += hours * 60  # Hour is 0-23
-
-    key_value += (event['eventDate'][2] - 1) * 60 * 24  # Day is 0-30.
-    key_value += (event['eventDate'][1] - 1) * 60 * 24 * 31  # Month is 0-11.
-    key_value += event['eventDate'][0] * 60 * 24 * 31 * 12  # Year is any integer.
-
-    return key_value
-
-
-def sort_events_list(events_list):
-    return sorted(events_list, key=sort_events_key, reverse=True)
+# def sort_events_list(events_list):
+#     return sorted(events_list, key=sort_events_key, reverse=True)
 
 
 # @app.route('/add_submit', methods=['POST'])
@@ -190,6 +190,10 @@ def sort_events_list(events_list):
 @app.route('/add', methods=['GET', 'POST'])
 def add_event():
 
+    print('add')
+
+    # TODO remove ~ from eventName!
+
     if 'n' not in request.args or 'm' not in request.args or 'd' not in request.args:
         return 'Invalid request.'
 
@@ -218,7 +222,10 @@ def add_event():
         print('a')
         return 'Invalid request.'
 
-    new_event_obj = {'eventName': request.form['event-name']}
+    # new_event_obj = {'eventName': request.form['event-name']}
+    new_event_arg_list = ['', '', request.form['event-name'].replace('~', '')]  # Remove all tildes, which delimits the url event data.
+    print(new_event_arg_list)
+    print(request.form['event-name'])
 
     if request.form['date-type'] == 'cal':
         try:
@@ -228,7 +235,13 @@ def add_event():
             print('b')
             return 'Invalid request.'
         else:
-            new_event_obj['eventDate'] = cal_list
+            if cal_list[0] < 0 or 9999 < cal_list[0] \
+                    or cal_list[1] < 1 or 12 < cal_list[1] \
+                    or cal_list[2] < 1 or 31 < cal_list[2]:
+                return 'Date out of range.'
+            date_str = f'{str(cal_list[0]).zfill(4)}{str(cal_list[1]).zfill(2)}{str(cal_list[2]).zfill(2)}'
+            new_event_arg_list.append(date_str)
+            # new_event_obj['eventDate'] = cal_list
 
     else:
         # request.form['date-type'] == 'gest':
@@ -236,39 +249,60 @@ def add_event():
             gest_list = [int(request.form['gest-week']), int(request.form['gest-day'])]
         except:
             # Couldn't parse all date fields. Fields blank or invalid.
-            print('c')
             return 'Invalid request.'
         else:
-            new_event_obj['eventGestTime'] = gest_list
+            if gest_list[0] < 0 or 42 < gest_list[0] \
+                    or gest_list[1] < 0 or 6 < gest_list[1]:
+                return 'Date out of range.'
+            date_str = f'{str(gest_list[0]).zfill(2)}{gest_list[1]}'
+            new_event_arg_list.append(date_str)
+            # new_event_obj['eventGestTime'] = gest_list
 
     if 'has-time' in request.form:
         # request.form['has-time'] == 'true':
         if request.form['am-or-pm'] != 'am' and request.form['am-or-pm'] != 'pm':
-            print('d')
             return 'Invalid request.'
         try:
             time_list = [int(request.form['hour']), int(request.form['minute']), request.form['am-or-pm']]
         except:
             # Couldn't parse all time fields. Fields blank or invalid.
-            print('e')
             return 'Invalid request.'
         else:
-            new_event_obj['eventTime'] = time_list
+            if time_list[0] < 1 or 12 < time_list[0] \
+                    or time_list[1] < 0 or 60 < time_list[1]:
+                return 'Time out of range.'
+            time_str = f'{str(time_list[0]).zfill(2)}{str(time_list[1]).zfill(2)}{time_list[2]}'
+            new_event_arg_list.append(time_str)
+            # new_event_obj['eventTime'] = time_list
 
     try:
-        events_list = json.loads(request.args['e'])
+        # events_list = json.loads(request.args['e'])
+        all_events_str = request.args['e']  # Todo need to try? What happens if not present?
     except:
-        # Events data absent or invalid.
-        events_list = []
+        # Events data absent.
+        # events_list = []
+        all_events_str = ''
 
-    events_list.append(new_event_obj)
-    sorted_events_list = sort_events_list(events_list)
-    events_str = json.dumps(sorted_events_list)
-    return redirect(url_for('calendar', n=request.args['n'], m=request.args['m'], d=request.args['d'], e=events_str))
+    all_events_str += '~'.join(new_event_arg_list)
+    # events_list.append(new_event_obj)
+    # sorted_events_list = sort_events_list(events_list)
+    # events_str = json.dumps(events_list)
+    print(request.args)
+    return redirect(url_for('validate_args', n=request.args['n'], m=request.args['m'], d=request.args['d'], e=all_events_str))
 
 
-@app.route('/create')
+@app.route('/create', methods=['GET', 'POST'])
 def init_calendar():
+
+    if request.method == 'POST':
+        if 'n' in request.form and 'm' in request.form and 'd' in request.form:
+            name = request.form['n'].replace('~', '')  # Remove all tildes, which delimits the url event data.
+            print(name)
+            month = request.form['m']
+            day = request.form['d']
+            return redirect(url_for('validate_args', n=name, m=month, d=day))
+        return 'Invalid request.'
+
     if 'n' in request.args:
         name = request.args['n']
     else:
@@ -286,12 +320,53 @@ def init_calendar():
 
 @app.route('/')
 def calendar():
+    return kid.render_template('kid_temps/calendar.html')
+
+
+@app.route('/validate')
+def validate_args():
+
+    if 'n' not in request.args:
+        return redirect(url_for('init_calendar'))
     try:
         int(request.args['m'])
         int(request.args['d'])
     except:
         return redirect(url_for('init_calendar'))
-    return kid.render_template('kid_temps/calendar.html')
+
+    if 'e' not in request.args:
+        return redirect(url_for('calendar', n=request.args['n'], m=request.args['m'], d=request.args['d']))
+
+    events_list = request.args['e'].split('~~')
+    events_list_validated = []
+
+    for event in events_list:
+        # ~~nameA~20231231~1159pm
+        # ~~nameB~426  (week 42 day 6)
+        event_fields = event.split('~')
+        field_count = len(event_fields)
+        if field_count < 2 or 3 < field_count:
+            continue
+        date_str_len = len(event_fields[1])
+        if date_str_len != 3 and date_str_len != 8:
+            continue
+        try:
+            int(event_fields[1])
+        except:
+            continue
+        if field_count > 2:
+            if len(event_fields[2]) != 6:
+                continue
+            try:
+                int(event_fields[2][:4])
+            except:
+                continue
+            if event_fields[2][4:] != 'am' and event_fields[2][4:] != 'pm':
+                continue
+        events_list_validated.append(event)
+
+    events_str = '~~'.join(events_list_validated)
+    return redirect(url_for('calendar', n=request.args['n'], m=request.args['m'], d=request.args['d'], e=events_str))
 
 
 if __name__ == '__main__':
