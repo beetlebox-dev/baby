@@ -190,14 +190,12 @@ def favicon():
 @app.route('/add', methods=['GET', 'POST'])
 def add_event():
 
-    print('add')
-
     # TODO remove ~ from eventName!
 
     if 'n' not in request.args or 'm' not in request.args or 'd' not in request.args:
         return 'Invalid request.'
 
-    if request.method != 'POST':
+    if request.method == 'GET':
         current_year = datetime.now().year
         # if 'name' in request.args:
         #     name = request.args['name']
@@ -219,20 +217,16 @@ def add_event():
             or 'cal-year' not in request.form or 'cal-month' not in request.form or 'cal-day' not in request.form \
             or 'gest-week' not in request.form or 'gest-day' not in request.form \
             or 'hour' not in request.form or 'minute' not in request.form or 'am-or-pm' not in request.form:
-        print('a')
         return 'Invalid request.'
 
     # new_event_obj = {'eventName': request.form['event-name']}
-    new_event_arg_list = ['', '', request.form['event-name'].replace('~', '')]  # Remove all tildes, which delimits the url event data.
-    print(new_event_arg_list)
-    print(request.form['event-name'])
+    new_event_arg_list = [request.form['event-name'].replace('~', '')]  # Remove all tildes, which delimits the url event data.
 
     if request.form['date-type'] == 'cal':
         try:
             cal_list = [int(request.form['cal-year']), int(request.form['cal-month']), int(request.form['cal-day'])]
         except:
             # Couldn't parse all date fields. Fields blank or invalid.
-            print('b')
             return 'Invalid request.'
         else:
             if cal_list[0] < 0 or 9999 < cal_list[0] \
@@ -277,7 +271,7 @@ def add_event():
 
     try:
         # events_list = json.loads(request.args['e'])
-        all_events_str = request.args['e']  # Todo need to try? What happens if not present?
+        all_events_str = f"{request.args['e']}~~"  # Todo need to try? What happens if not present?
     except:
         # Events data absent.
         # events_list = []
@@ -287,8 +281,7 @@ def add_event():
     # events_list.append(new_event_obj)
     # sorted_events_list = sort_events_list(events_list)
     # events_str = json.dumps(events_list)
-    print(request.args)
-    return redirect(url_for('validate_args', n=request.args['n'], m=request.args['m'], d=request.args['d'], e=all_events_str))
+    return redirect(url_for('calendar', n=request.args['n'], m=request.args['m'], d=request.args['d'], e=all_events_str))
 
 
 @app.route('/create', methods=['GET', 'POST'])
@@ -297,10 +290,9 @@ def init_calendar():
     if request.method == 'POST':
         if 'n' in request.form and 'm' in request.form and 'd' in request.form:
             name = request.form['n'].replace('~', '')  # Remove all tildes, which delimits the url event data.
-            print(name)
             month = request.form['m']
             day = request.form['d']
-            return redirect(url_for('validate_args', n=name, m=month, d=day))
+            return redirect(url_for('calendar', n=name, m=month, d=day, e=''))
         return 'Invalid request.'
 
     if 'n' in request.args:
@@ -318,15 +310,57 @@ def init_calendar():
     return kid.render_template('kid_temps/init_calendar.html', name=name, month=month, day=day)
 
 
+# def validate_args(args):
+#
+#     if 'n' not in args:
+#         return redirect(url_for('init_calendar'))
+#     try:
+#         int(args['m'])
+#         int(args['d'])
+#     except:
+#         return redirect(url_for('init_calendar'))
+#
+#     if 'e' not in args:
+#         return kid.render_template('kid_temps/calendar.html')
+#         # return redirect(url_for('calendar', n=args['n'], m=args['m'], d=args['d']))
+#
+#     events_list = args['e'].split('~~')
+#     events_list_validated = []
+#
+#     for event in events_list:
+#         # ~~nameA~20231231~1159pm
+#         # ~~nameB~426  (week 42 day 6)
+#         event_fields = event.split('~')
+#         field_count = len(event_fields)
+#         if field_count < 2 or 3 < field_count:
+#             continue
+#         date_str_len = len(event_fields[1])
+#         if date_str_len != 3 and date_str_len != 8:
+#             continue
+#         try:
+#             int(event_fields[1])
+#         except:
+#             continue
+#         if field_count > 2:
+#             if len(event_fields[2]) != 6:
+#                 continue
+#             try:
+#                 int(event_fields[2][:4])
+#             except:
+#                 continue
+#             if event_fields[2][4:] != 'am' and event_fields[2][4:] != 'pm':
+#                 continue
+#         events_list_validated.append(event)
+#
+#     events_str = '~~'.join(events_list_validated)
+#     # return kid.render_template('kid_temps/calendar.html')
+#     return redirect(url_for('calendar', n=args['n'], m=args['m'], d=args['d'], e=events_str))
+
+
 @app.route('/')
 def calendar():
-    return kid.render_template('kid_temps/calendar.html')
 
-
-@app.route('/validate')
-def validate_args():
-
-    if 'n' not in request.args:
+    if 'n' not in request.args or 'e' not in request.args:
         return redirect(url_for('init_calendar'))
     try:
         int(request.args['m'])
@@ -334,10 +368,14 @@ def validate_args():
     except:
         return redirect(url_for('init_calendar'))
 
-    if 'e' not in request.args:
-        return redirect(url_for('calendar', n=request.args['n'], m=request.args['m'], d=request.args['d']))
+    # if 'e' not in request.args:
+    #     return kid.render_template('kid_temps/calendar.html')
+    #     # return redirect(url_for('calendar', n=request.args['n'], m=request.args['m'], d=request.args['d']))
 
-    events_list = request.args['e'].split('~~')
+    if request.args['e'] == '':
+        events_list = []
+    else:
+        events_list = request.args['e'].split('~~')
     events_list_validated = []
 
     for event in events_list:
@@ -365,8 +403,17 @@ def validate_args():
                 continue
         events_list_validated.append(event)
 
-    events_str = '~~'.join(events_list_validated)
-    return redirect(url_for('calendar', n=request.args['n'], m=request.args['m'], d=request.args['d'], e=events_str))
+    # Todo prevent inf loop of redirects if never validated????????
+
+    if len(events_list) != len(events_list_validated):
+        events_str = '~~'.join(events_list_validated)
+        print(f'Pruned events string: \n    from: {request.args["e"]}\n      to: {events_str}')
+        return redirect(url_for('calendar', n=request.args['n'], m=request.args['m'], d=request.args['d'], e=events_str))
+
+    if len(request.args) != 4:
+        return redirect(url_for('calendar', n=request.args['n'], m=request.args['m'], d=request.args['d'], e=request.args['e']))
+
+    return kid.render_template('kid_temps/calendar.html')
 
 
 if __name__ == '__main__':

@@ -363,7 +363,8 @@ function dateObjFromEventData(dateYMD, time12hr) {
     // If time12hr is not defined, it defaults to 12am.
     if (typeof time12hr === 'undefined') time12hr = [0, 0, 'am'];
     const month = dateYMD[1] - 1;  // Convert Jan=1 index to Jan=0 index.
-    const hr24 = time12hr[2] === 'pm' ? time12hr[0] + 12 : time12hr[0];  // Converts 12-hour to 24-hour.
+    const hr24 = time12hr[2] === 'pm' ? time12hr[0] % 12 + 12 : time12hr[0] % 12;  // Converts 12-hour to 24-hour.
+    console.log(dateYMD, time12hr, hr24);
     const newDateObj = new Date(dateYMD[0], month, dateYMD[2], hr24, time12hr[1]);
     return newDateObj;
 };
@@ -681,6 +682,7 @@ function initDataFromRequestArgs() {
     wk0dy0 = dateObjFromEventData(dueDateArray);
 
 
+    /////////////working here//////////////////
 
 
 
@@ -688,15 +690,71 @@ function initDataFromRequestArgs() {
 
 
 
+    const customEventsArray = requestParams.get('e').split('~~');
 
-    const customEventsJson = requestParams.get('e');
+    for (const customEventStr of customEventsArray) {
 
-    if (customEventsJson === null) return;
+        const customEventArray = customEventStr.split('~');
+        if (customEventArray.length < 2) continue;
 
-    const customEventsArray = JSON.parse(customEventsJson);
-    console.log(requestParams.get('e'))
-    console.log(customEventsArray);
-    events.push(...customEventsArray);
+        // eventDate or eventGestTime
+        const customEventObj = {
+            eventName: customEventArray[0],
+        };
+
+        const eventDateInt = parseInt(customEventArray[1], 10);
+        // if (Number.isNaN(eventDateInt)) continue;
+
+        if (customEventArray[1].length === 3) {
+            const gestDate = [
+                parseInt(customEventArray[1].slice(0, 2), 10),
+                parseInt(customEventArray[1].slice(2, 3), 10),
+            ];
+            // if (Number.isNaN(gestDate[0])) continue;
+            // if (Number.isNaN(gestDate[1])) continue;
+            customEventObj.eventGestTime = gestDate;
+
+        } else if (customEventArray[1].length === 8) {
+            const calDate = [
+                parseInt(customEventArray[1].slice(0, 4), 10),
+                parseInt(customEventArray[1].slice(4, 6), 10),
+                parseInt(customEventArray[1].slice(6, 8), 10),
+            ];
+            // if (Number.isNaN(calDate[0])) continue;
+            // if (Number.isNaN(calDate[1])) continue;
+            // if (Number.isNaN(calDate[2])) continue;
+            customEventObj.eventDate = calDate;
+
+        } else {
+            continue;
+        };
+
+        if (customEventArray.length > 2) {
+            const time = [
+                parseInt(customEventArray[2].slice(0, 2), 10),
+                parseInt(customEventArray[2].slice(2, 4), 10),
+                customEventArray[2].slice(4, 6),
+            ];
+            // if (Number.isNaN(calDate[0])) continue;
+            // if (Number.isNaN(calDate[1])) continue;
+            // if (Number.isNaN(calDate[2])) continue;
+            customEventObj.eventTime = time;
+        };
+
+        console.log(customEventObj)
+        events.push(customEventObj)
+    };
+
+    // if (customEventsJson === null) return;
+
+    // const customEventsArray = JSON.parse(customEventsJson);
+    // console.log(requestParams.get('e'))
+    // console.log(customEventsArray);
+    // events.push(...customEventsArray);
+
+
+
+
     ////////// Need to majorly error proof all of this at each step!!!!
 
 };
