@@ -60,7 +60,7 @@
             <!-- due date w40d0 -->
 
             <label for="name">Calendar Name:</label>
-            <input type="text" id="name" name="n" value="{{ name }}" placeholder='"Baby Calendar!"' required autofocus />
+            <input type="text" id="name" name="n" value="{{ name }}" placeholder='"Baby Calendar!"' required />
 
             <br/>
 
@@ -101,5 +101,13 @@
     </div>
 
 </body>
+
+
+<script>
+
+// Select all text in input box on load.
+document.getElementById('name').select();
+
+</script>
 
 </html>

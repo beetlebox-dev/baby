@@ -34,7 +34,6 @@
         }
         button:hover {
             border: 3px solid hsl(234, 100%, 75%);
-            /* Same as contrast-color */
             background-color: hsl(234, 60%, 90%);
             color: black;
         }
@@ -80,8 +79,6 @@
         }
 
         .event-box img {
-            /* object-fit: cover; */
-            /* width: 20vh; */
             height: 20vh;
             border-radius: 3vh;
             pointer-events: none;
@@ -116,7 +113,7 @@
     <p>Tick Time: </p>
     <h2 id="tick-time"></h2> -->
 
-    <a class="add-href-args" href="{{ url_for('init_calendar') }}"><button>Start over</button></a>
+    <a class="add-href-args" href="{{ url_for('init_calendar') }}"><button>Start Over</button></a>
     <a class="add-href-args" href="{{ url_for('add_event') }}"><button>Add Event</button></a>
 
     <h1 id="title"></h1>
@@ -133,8 +130,8 @@
 
 let debugTimeJumpDays = 0;
 let debugTimeJumpHours = 0;
-//
-// Comment out block below to not debug.
+// //
+// // Comment out block from here down to not debug.
 // // DEBUG TIME: ctrlF-debug-time ////
 // window.addEventListener('keydown', e => {
 //     if (e.key === '=') debugTimeJumpDays += 1;
@@ -147,11 +144,15 @@ let debugTimeJumpHours = 0;
 
 
 // INIT VARIABLES
-let wk0dy0;
-// const wk0dy0 = dateObjFromEventData([2023, 6, 17]);
+let wk0dy0, now;
 let topHue = 0;  // Top hue starts as red.
-let now;
-let events;
+let events = [
+    // Starts with default events. Custom events added later in script.
+    {"eventName": "Due Date", "eventGestDate": [40, 0]},
+    {"eventName": "Start Third Trimester", "eventGestDate": [27, 0]},
+    {"eventName": "Start Second Trimester", "eventGestDate": [13, 0]},
+    {"eventName": "Start First Trimester", "eventGestDate": [0, 0]},
+];
 
 
 // WEIGHT COUNTER VARIABLES
@@ -173,63 +174,7 @@ for (let n = 0; n < gramsByWeekNum.length; n++) {
 };
 
 
-// // SCRIPT
-// fetch('/data')
-//     .then((response) => response.json())
-//     .then((data) => {
-//         events = data;
-//         initAll();
-//         window.addEventListener('focus', scheduleAudit);
-//     });
-events = [
-    {
-        "eventName": "Due Date",
-        "eventGestTime": [
-            40,
-            0,
-        ],
-    },
-    {
-        "eventName": "Start Third Trimester",
-        "eventGestTime": [
-            27,
-            0,
-        ],
-    },
-    // {
-    //     "eventName": "Appointment",
-    //     "eventGestTime": [
-    //         25,
-    //         4,
-    //     ],
-    //     "eventTime": [
-    //         10,
-    //         30,
-    //         "am",
-    //     ],
-    // },
-    {
-        "eventName": "Start Second Trimester",
-        "eventGestTime": [
-            13,
-            0,
-        ],
-    },
-    // {
-    //     "eventName": "Ultrasound",
-    //     "eventGestTime": [
-    //         12,
-    //         5,
-    //     ],
-    // },
-    {
-        "eventName": "Start First Trimester",
-        "eventGestTime": [
-            0,
-            0,
-        ],
-    },
-];
+// SCRIPT
 initAll();
 window.addEventListener('focus', scheduleAudit);
 
@@ -295,11 +240,11 @@ function auditWeightValues() {
 
     const partialWeekTimeFromWeight = (weightData.currentWeight - currentWeightData.weekStartWeight) / (currentWeightData.weekEndWeight - currentWeightData.weekStartWeight);
     const driftSecs = Math.abs(currentWeightData.partialWeekTimeActual - partialWeekTimeFromWeight) / weeksPerSec;
-    // console.log('weight driftSecs:', driftSecs);
+    // console.log('weight driftSecs:', driftSecs);  ////
 
     if (driftSecs > 1) {
         // One second error tolerance exceeded.
-        // console.log('One second error tolerance exceeded.');
+        // console.log('One second error tolerance exceeded.');  ////
         updateWeightValues(currentWeightData);
     };
 
@@ -364,7 +309,6 @@ function dateObjFromEventData(dateYMD, time12hr) {
     if (typeof time12hr === 'undefined') time12hr = [0, 0, 'am'];
     const month = dateYMD[1] - 1;  // Convert Jan=1 index to Jan=0 index.
     const hr24 = time12hr[2] === 'pm' ? time12hr[0] % 12 + 12 : time12hr[0] % 12;  // Converts 12-hour to 24-hour.
-    console.log(dateYMD, time12hr, hr24);
     const newDateObj = new Date(dateYMD[0], month, dateYMD[2], hr24, time12hr[1]);
     return newDateObj;
 };
@@ -643,7 +587,7 @@ function initNowEvent(orderNum) {
         order: orderNum,
         eventDateObj: now,
         timeUntil: [0, 0, 0, -1, true],  // Indicates that event has already happened. No countdown.
-        // EventDate and eventTime omitted. Needed only for countdown events in future.
+        // Date and time omitted. Needed only for countdown events in future.
     };
     initEvent(todayObj);
 };
@@ -658,105 +602,71 @@ function initDataFromRequestArgs() {
 
     document.getElementById('title').innerHTML = requestParams.get('n');
 
-    const dueDateArray = [
+    //
+    // Init wk0dy0.
+
+    const baseDateArray = [
+        // Due date from requestParams.
         now.getFullYear(),
         parseInt(requestParams.get('m'), 10),
         parseInt(requestParams.get('d'), 10),
     ];
-    
-    if (Number.isNaN(dueDateArray[1])) {
-        // Request argument is not valid.
-        dueDateArray[1] = 1;
-    };
-    if (Number.isNaN(dueDateArray[2])) {
-        // Request argument is not valid.
-        dueDateArray[2] = 1;
-    };
 
-    const dueDateThisYear = dateObjFromEventData(dueDateArray);
+    const dueDateThisYear = dateObjFromEventData(baseDateArray);
     if (now.getTime() > dueDateThisYear.getTime()) {
         // Using current year yields a due date in the past. Use next year for due date.
-        dueDateArray[0] += 1;
+        baseDateArray[0] += 1;
     };
-    dueDateArray[2] -= 280;  // Subtract 40 weeks from due date to get wk0dy0.
-    wk0dy0 = dateObjFromEventData(dueDateArray);
+    baseDateArray[2] -= 280;  // Subtract 40 weeks from due date to convert to wk0dy0.
+    wk0dy0 = dateObjFromEventData(baseDateArray);
 
+    // End init wk0dy0.
+    //
+    // Init custom events.
 
-    /////////////working here//////////////////
-
-
-
-
-
-
-
+    if (requestParams.get('e').length === 0) return;
+    
     const customEventsArray = requestParams.get('e').split('~~');
 
     for (const customEventStr of customEventsArray) {
 
         const customEventArray = customEventStr.split('~');
-        if (customEventArray.length < 2) continue;
+        const customEventObj = {eventName: customEventArray[0]};
 
-        // eventDate or eventGestTime
-        const customEventObj = {
-            eventName: customEventArray[0],
-        };
-
-        const eventDateInt = parseInt(customEventArray[1], 10);
-        // if (Number.isNaN(eventDateInt)) continue;
-
-        if (customEventArray[1].length === 3) {
-            const gestDate = [
-                parseInt(customEventArray[1].slice(0, 2), 10),
-                parseInt(customEventArray[1].slice(2, 3), 10),
-            ];
-            // if (Number.isNaN(gestDate[0])) continue;
-            // if (Number.isNaN(gestDate[1])) continue;
-            customEventObj.eventGestTime = gestDate;
-
-        } else if (customEventArray[1].length === 8) {
+        if (customEventArray[1].length === 8) {
             const calDate = [
+                // yyyymmdd
                 parseInt(customEventArray[1].slice(0, 4), 10),
                 parseInt(customEventArray[1].slice(4, 6), 10),
                 parseInt(customEventArray[1].slice(6, 8), 10),
             ];
-            // if (Number.isNaN(calDate[0])) continue;
-            // if (Number.isNaN(calDate[1])) continue;
-            // if (Number.isNaN(calDate[2])) continue;
-            customEventObj.eventDate = calDate;
+            customEventObj.eventCalDate = calDate;
 
         } else {
-            continue;
+            // customEventArray[1].length === 3
+            const gestDate = [
+                // wwd (i.e. 426 means week 42 day 6)
+                parseInt(customEventArray[1].slice(0, 2), 10),
+                parseInt(customEventArray[1].slice(2, 3), 10),
+            ];
+            customEventObj.eventGestDate = gestDate;
         };
 
         if (customEventArray.length > 2) {
             const time = [
+                // hhmmap (i.e. 1159pm)
                 parseInt(customEventArray[2].slice(0, 2), 10),
                 parseInt(customEventArray[2].slice(2, 4), 10),
                 customEventArray[2].slice(4, 6),
             ];
-            // if (Number.isNaN(calDate[0])) continue;
-            // if (Number.isNaN(calDate[1])) continue;
-            // if (Number.isNaN(calDate[2])) continue;
             customEventObj.eventTime = time;
         };
 
-        console.log(customEventObj)
-        events.push(customEventObj)
+        events.push(customEventObj);
     };
 
-    // if (customEventsJson === null) return;
-
-    // const customEventsArray = JSON.parse(customEventsJson);
-    // console.log(requestParams.get('e'))
-    // console.log(customEventsArray);
-    // events.push(...customEventsArray);
-
-
-
-
-    ////////// Need to majorly error proof all of this at each step!!!!
-
+    // End init custom events.
+    //
 };
 
 function eventsSortCompareFunc(eventA, eventB) {
@@ -771,7 +681,7 @@ function initAll() {
 
     // Create eventDateObj for each event.
     for (const event of events) {
-        const eventDateArray = 'eventGestTime' in event ? dateArrayFromPregTime(event.eventGestTime, event.eventTime) : event.eventDate;
+        const eventDateArray = 'eventGestDate' in event ? dateArrayFromPregTime(event.eventGestDate, event.eventTime) : event.eventCalDate;
         event.eventDateObj = dateObjFromEventData(eventDateArray, event.eventTime);
     };
 
@@ -783,8 +693,6 @@ function initAll() {
     let orderNum = 0;
     for (const event of events) {
 
-        // const eventDateArray = 'eventGestTime' in event ? dateArrayFromPregTime(event.eventGestTime, event.eventTime) : event.eventDate;
-        // event.eventDateObj = dateObjFromEventData(eventDateArray, event.eventTime);
         event.timeUntil = getDifferenceDHMS(now, event.eventDateObj);
         event.order = orderNum;
 
