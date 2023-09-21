@@ -113,7 +113,7 @@
     <p>Tick Time: </p>
     <h2 id="tick-time"></h2> -->
 
-    <a class="add-href-args" href="{{ url_for('init_calendar') }}"><button>Start Over</button></a>
+    <a class="add-href-args" href="{{ url_for('new_calendar') }}"><button>Start Over</button></a>
     <a class="add-href-args" href="{{ url_for('add_event') }}"><button>Add Event</button></a>
 
     <h1 id="title"></h1>
@@ -624,8 +624,8 @@ function initDataFromRequestArgs() {
     //
     // Init custom events.
 
-    if (requestParams.get('e').length === 0) return;
-    
+    if (requestParams.has('e') === false || requestParams.get('e').length === 0) return;
+
     const customEventsArray = requestParams.get('e').split('~~');
 
     for (const customEventStr of customEventsArray) {

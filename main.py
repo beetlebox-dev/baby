@@ -2,7 +2,6 @@ from datetime import datetime
 from flask import Flask, render_template, request, url_for, redirect
 from admin import admin_alert_thread
 
-
 # Copyright 2023 Johnathan Pennington | All rights reserved.
 
 
@@ -11,7 +10,6 @@ app = Flask(__name__)
 
 @app.errorhandler(404)
 def page_not_found(e):
-
     ignore_paths_starting_with = [  # Doesn't send an admin alert if request.path starts with any of these.
         '20', 'admin', 'blog', 'cms', 'feed', 'media', 'misc', 'news', 'robots', 'site', 'sito',
         'shop', 'test', 'web', 'wordpress', 'Wordpress', 'wp', 'Wp', 'xmlrpc.php',
@@ -51,11 +49,62 @@ def favicon():
     return redirect(url_for('static', filename='favicon.ico'))
 
 
+def setup_cal_redirect(save_custom_events=True):
+    if 'n' in request.args:
+        name = request.args['n']
+    else:
+        name = ''
+    if 'm' in request.args:
+        month = request.args['m']
+    else:
+        month = '1'
+    if 'd' in request.args:
+        day = request.args['d']
+    else:
+        day = '1'
+    if 'e' in request.args and save_custom_events:
+        return redirect(url_for('setup_calendar', n=name, m=month, d=day, e=request.args['e']))
+    else:
+        return redirect(url_for('setup_calendar', n=name, m=month, d=day))
+
+
+# @app.route('/repair')
+# def repair_calendar():
+#     return setup_cal_redirect()
+
+
+@app.route('/new')
+def new_calendar():
+    return setup_cal_redirect(False)
+
+
+# Always go through setup_cal_redirect (via repair_calendar or new_calendar endpoints) for validation.
+# Never come straight here.
+@app.route('/setup', methods=['GET', 'POST'])
+def setup_calendar():
+
+    if request.method == 'POST':
+        if 'n' in request.form and 'm' in request.form and 'd' in request.form:
+            name = request.form['n'].replace('~', '')  # Remove all tildes, which delimits the url event data.
+            if 'e' in request.args:
+                return redirect(url_for('calendar', n=name, m=request.form['m'],
+                                        d=request.form['d'], e=request.args['e']))
+            else:
+                # Don't include e in request.args.
+                return redirect(url_for('calendar', n=name, m=request.form['m'], d=request.form['d']))
+        return 'Invalid request.'
+
+    # request.method == 'GET'
+    return render_template('kid_temps/init_calendar.html',
+                           name=request.args['n'], month=request.args['m'], day=request.args['d'])
+
+
 @app.route('/add', methods=['GET', 'POST'])
 def add_event():
 
     if 'n' not in request.args or 'm' not in request.args or 'd' not in request.args:
-        return 'Invalid request.'
+        # Name and events args are required.
+        return setup_cal_redirect()
 
     if request.method == 'GET':
         return render_template('kid_temps/add_event.html', current_year=datetime.now().year)
@@ -129,50 +178,31 @@ def add_event():
                             d=request.args['d'], e=all_events_str))
 
 
-@app.route('/create', methods=['GET', 'POST'])
-def init_calendar():
-
-    if request.method == 'POST':
-        if 'n' in request.form and 'm' in request.form and 'd' in request.form:
-            name = request.form['n'].replace('~', '')  # Remove all tildes, which delimits the url event data.
-            return redirect(url_for('calendar', n=name, m=request.form['m'], d=request.form['d'], e=''))
-            # No custom events yet, so e=''.
-        return 'Invalid request.'
-
-    # request.method == 'GET'
-
-    if 'n' in request.args:
-        name = request.args['n']
-    else:
-        name = ''
-    if 'm' in request.args:
-        month = request.args['m']
-    else:
-        month = '1'
-    if 'd' in request.args:
-        day = request.args['d']
-    else:
-        day = '1'
-    return render_template('kid_temps/init_calendar.html', name=name, month=month, day=day)
-
-
 @app.route('/')
 def calendar():
 
-    if 'n' not in request.args or 'e' not in request.args:
-        # Name and events args are required.
-        return redirect(url_for('init_calendar'))
+    if 'n' not in request.args:
+        # Name arg is required.
+        return setup_cal_redirect()
 
     try:
         int(request.args['m'])
         int(request.args['d'])
     except:
         # Month or day args missing, blank, or not parsable to integers.
-        return redirect(url_for('init_calendar'))
+        return setup_cal_redirect()
+
+    if 'e' not in request.args:
+        if len(request.args) != 3:
+            # This redirect will remove all request args besides those passed into url_for.
+            return redirect(url_for('calendar', n=request.args['n'], m=request.args['m'], d=request.args['d']))
+        return render_template('kid_temps/calendar.html')
+
+    # 'e' in request.args
 
     if request.args['e'] == '':
         events_list = []
-        # Otherwise, splitting an empty string would yield [''].
+        # Otherwise, splitting an empty string would yield: events_list = [''].
     else:
         events_list = request.args['e'].split('~~')
 
@@ -212,9 +242,14 @@ def calendar():
             if event_fields[2][4:] != 'am' and event_fields[2][4:] != 'pm':
                 continue
 
-        events_list_validated.append(event)
+        events_list_validated.append(event)  # If this line reached, event is valid.
+
+    if len(events_list_validated) == 0:
+        # Remove 'e' from request.args.
+        return redirect(url_for('calendar', n=request.args['n'], m=request.args['m'], d=request.args['d']))
 
     if len(events_list) != len(events_list_validated):
+        # Remove invalid events within request.args.
         events_str = '~~'.join(events_list_validated)
         return redirect(url_for('calendar', n=request.args['n'], m=request.args['m'],
                                 d=request.args['d'], e=events_str))
@@ -224,6 +259,8 @@ def calendar():
         return redirect(url_for('calendar', n=request.args['n'], m=request.args['m'],
                                 d=request.args['d'], e=request.args['e']))
 
+    # 'n' in request.args, 'm' and 'd' parsable to ints, 'e' in request.args,
+    # len(events_list_validated) != 0, len(events_list) == len(events_list_validated), len(request.args) == 4
     return render_template('kid_temps/calendar.html')
 
 
