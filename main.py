@@ -95,7 +95,7 @@ def setup_calendar():
         return 'Invalid request.'
 
     # request.method == 'GET'
-    return render_template('kid_temps/init_calendar.html',
+    return render_template('init_calendar.html',
                            name=request.args['n'], month=request.args['m'], day=request.args['d'])
 
 
@@ -107,7 +107,7 @@ def add_event():
         return setup_cal_redirect()
 
     if request.method == 'GET':
-        return render_template('kid_temps/add_event.html', current_year=datetime.now().year)
+        return render_template('add_event.html', calendar_name=request.args['n'], current_year=datetime.now().year)
 
     # request.method == 'POST':
 
@@ -196,7 +196,7 @@ def calendar():
         if len(request.args) != 3:
             # This redirect will remove all request args besides those passed into url_for.
             return redirect(url_for('calendar', n=request.args['n'], m=request.args['m'], d=request.args['d']))
-        return render_template('kid_temps/calendar.html')
+        return render_template('calendar.html', calendar_name=request.args['n'])
 
     # 'e' in request.args
 
@@ -261,8 +261,9 @@ def calendar():
 
     # 'n' in request.args, 'm' and 'd' parsable to ints, 'e' in request.args,
     # len(events_list_validated) != 0, len(events_list) == len(events_list_validated), len(request.args) == 4
-    return render_template('kid_temps/calendar.html')
+    return render_template('calendar.html', calendar_name=request.args['n'])
 
 
 if __name__ == '__main__':
+    # app.run(debug=True, host='192.168.0.111')
     app.run(debug=True)

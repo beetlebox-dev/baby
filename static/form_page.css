@@ -1,0 +1,88 @@
+
+body {
+
+    font-family: Futura, "Century Gothic", sans-serif;
+    text-align: center;
+    background-color: hsl(70, 100%, 85%);
+
+    /* Centered Contents */
+    margin: 0;
+    min-height: 100vh;
+    justify-content: space-around;
+}
+
+body, #main-box, .form-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.form-group {
+    margin: 0.5rem 0;
+    justify-content: center;
+}
+
+.form-group > *:not(.form-group > *:first-child) {
+    /* All direct children of .form-group elements besides the first one. */
+    margin-top: 0.3rem;
+}
+
+.multi-field-line > *:not(.multi-field-line > *:first-child) {
+    /* All direct children of .multi-field-line elements besides the first one. */
+    margin-left: 0.3rem;
+}
+
+.form-group, .form-group > * {
+    width: 100%;
+}
+
+.multi-field-line {
+    display: flex;
+    align-items: center;
+}
+
+.multi-field-line > * {
+    flex: 1 1 auto;
+}
+
+label, input, select, button {
+    font-size: 1rem;
+    text-align: center;
+}
+
+label {
+    color: hsl(70, 41%, 41%);
+}
+
+select, input:not([type='checkbox']) {
+    height: 2rem;
+}
+
+select, input {
+    outline: none;  /* Custom focus styling. */
+    box-sizing: border-box;
+    padding: 0 0.4rem;
+    background-color: hsl(70, 100%, 95%);
+    border: 3px solid hsl(70, 100%, 35%);
+    color: hsl(70, 100%, 20%);
+}
+
+input:focus, select:focus {
+    border-color: hsl(270, 100%, 50%);
+    color: black;
+}
+
+button.form-group {
+    font-weight: bold;
+    margin-top: 1.5rem;  /* Additional space from form fields. */
+    padding: 0.6rem 1.5rem;
+    border-radius: 2rem;
+    border: 3px solid hsl(70, 40%, 60%);
+    background-color: hsl(70, 100%, 20%);
+    color: white;
+}
+
+button:hover {
+    border-color: hsl(270, 40%, 60%);
+    background-color: hsl(270, 100%, 20%);
+}

@@ -1,0 +1,56 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+    <title>Create A New Calendar</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='form_page.css') }}">
+    {% include "head_all.html" %}
+</head>
+
+<body>
+
+<form action="" method="POST">
+<div id="main-box">
+
+    <div class="form-group">
+        <label for="name">Calendar Name</label>
+        <input type="text" id="name" name="n" value="{{ name }}" placeholder='"Baby Calendar!"' required />
+    </div>
+
+    <div class="form-group">
+        <label for="month">Due Date</label>
+        <div class="multi-field-line">
+            <select id="month" name="m" required>
+                <option value="1" {% if month == "1" %}selected{% endif %}>January</option>
+                <option value="2" {% if month == "2" %}selected{% endif %}>February</option>
+                <option value="3" {% if month == "3" %}selected{% endif %}>March</option>
+                <option value="4" {% if month == "4" %}selected{% endif %}>April</option>
+                <option value="5" {% if month == "5" %}selected{% endif %}>May</option>
+                <option value="6" {% if month == "6" %}selected{% endif %}>June</option>
+                <option value="7" {% if month == "7" %}selected{% endif %}>July</option>
+                <option value="8" {% if month == "8" %}selected{% endif %}>August</option>
+                <option value="9" {% if month == "9" %}selected{% endif %}>September</option>
+                <option value="10" {% if month == "10" %}selected{% endif %}>October</option>
+                <option value="11" {% if month == "11" %}selected{% endif %}>November</option>
+                <option value="12" {% if month == "12" %}selected{% endif %}>December</option>
+            </select
+            ><input type="number" name="d" value="{{ day }}" min="1" max="31" step="1" required />
+            <!-- Eliminate whitespace above with ><input ... -->
+        </div>
+    </div>
+
+    <button class="form-group" type="submit">Create Calendar</button>
+
+</div>
+</form>
+
+</body>
+
+<script>
+    // Select all text in input box on load.
+    document.getElementById('name').select();
+</script>
+
+</html>

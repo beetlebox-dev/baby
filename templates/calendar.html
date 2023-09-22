@@ -4,10 +4,8 @@
 
 <head>
 
-    <meta charset="utf-8">
-    <title>Embryo 1</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='kid_static/favicon.ico') }}">
+    <title>{{ calendar_name }}</title>
+    {% include "head_all.html" %}
 
     <style>
 
@@ -18,29 +16,17 @@
             background-color: black;
         }
 
-        #logout-button {
-            position: absolute;
-            margin: 2vw;
-            top: 0;
-            right: 0;
-        }
         button {
-            padding: 4px 10px;
+            margin: 2vw 1vw;
             border-radius: 8px;
-            border: 3px solid hsl(150, 40%, 60%);
-            background-color: hsl(150, 25%, 25%);
-            color: white;
+            padding: 4px 10px;
             font-weight: bold;
+            color: white;
+            background-color: black;
+            border: 3px solid grey;
         }
         button:hover {
-            border: 3px solid hsl(234, 100%, 75%);
-            background-color: hsl(234, 60%, 90%);
-            color: black;
-        }
-
-        #calendar-box {
-            display: flex;
-            flex-direction: column;
+            border-color: white;
         }
 
         h1 {
@@ -48,9 +34,12 @@
             color: white;
         }
 
-        .event-box {
+        #calendar-box, .event-box {
             display: flex;
             flex-direction: column;
+        }
+
+        .event-box {
             align-items: center;
             padding: 0.4rem 1rem;
             background-color: hsl(0, 0%, 15%);
@@ -115,6 +104,8 @@
 
     <a class="add-href-args" href="{{ url_for('new_calendar') }}"><button>Start Over</button></a>
     <a class="add-href-args" href="{{ url_for('add_event') }}"><button>Add Event</button></a>
+
+    <hr>
 
     <h1 id="title"></h1>
 
@@ -459,7 +450,7 @@ function rotateColors() {
     // Rotate topHue for next time rotateColors is called, and change top hr color.
     topHue = (360 + topHue - hueStep * 3) % 360;
         // Subtract 3 steps: 1 step for top hr (changed next line), and 2 for the color box and hr next time rotateColors is called.
-    document.querySelector('hr').style.borderColor = `hsl(${topHue}, 15%, 50%)`;
+    document.querySelector('#calendar-box hr').style.borderColor = `hsl(${topHue}, 15%, 50%)`;  // Select first hr.
     topHue = (topHue + hueStep) % 360;
 };
 
