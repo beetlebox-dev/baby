@@ -25,6 +25,7 @@
             background-color: black;
             border: 3px solid grey;
         }
+
         button:hover {
             border-color: white;
         }
@@ -40,6 +41,7 @@
         }
 
         .event-box {
+            position: relative;  /* So that .del-event-form absolute positioning works. */
             align-items: center;
             padding: 0.4rem 1rem;
             background-color: hsl(0, 0%, 15%);
@@ -49,6 +51,27 @@
         #right-now {
             background-color: hsl(0, 0%, 0%);
             color: white;
+        }
+
+        form.del-event-form {
+            position: absolute;
+            margin: 0.5rem;
+            top: 0;
+            right: 0;
+            height: 1rem;
+        }
+
+        .del-event-form-img {
+            height: 100%;
+            opacity: 60%;
+        }
+
+        .del-event-form-img:hover {
+            opacity: 100%;
+        } 
+
+        .countdown-event .del-event-form-img {
+            filter: invert(1);
         }
 
         #weight {
@@ -67,7 +90,7 @@
             margin: 0.3rem 0;
         }
 
-        .event-box img {
+        .event-img {
             height: 20vh;
             border-radius: 3vh;
             pointer-events: none;
@@ -102,8 +125,8 @@
     <p>Tick Time: </p>
     <h2 id="tick-time"></h2> -->
 
-    <a class="add-href-args" href="{{ url_for('new_calendar') }}"><button>Start Over</button></a>
-    <a class="add-href-args" href="{{ url_for('add_event') }}"><button>Add Event</button></a>
+    <a href="{{ new_cal_href }}"><button>Start Over</button></a>
+    <a href="{{ add_event_href }}"><button>Add Event</button></a>
 
     <hr>
 
@@ -139,10 +162,10 @@ let wk0dy0, now;
 let topHue = 0;  // Top hue starts as red.
 let events = [
     // Starts with default events. Custom events added later in script.
-    {"eventName": "Due Date", "eventGestDate": [40, 0]},
-    {"eventName": "Start Third Trimester", "eventGestDate": [27, 0]},
-    {"eventName": "Start Second Trimester", "eventGestDate": [13, 0]},
-    {"eventName": "Start First Trimester", "eventGestDate": [0, 0]},
+    {eventName: 'Due Date', eventGestDate: [40, 0]},
+    {eventName: 'Start Third Trimester', eventGestDate: [27, 0], photoPath: 'tri3.png'},
+    {eventName: 'Start Second Trimester', eventGestDate: [13, 0], photoPath: 'tri2.png'},
+    {eventName: 'Start First Trimester', eventGestDate: [0, 0], photoPath: 'tri1.png'},
 ];
 
 
@@ -513,8 +536,16 @@ function updateDebugHTML(actualNowDateObj, timeDriftMsecs) {
 function initEvent(eventObj) {
 
     const additionalClasses = ['event-box'];
-
     let innerHTML = '';
+
+    if ('customEventIndex' in eventObj) {
+        innerHTML += `
+            <form class="del-event-form" action="/remove${window.location.search}" method="POST">
+                <input type="hidden" name="index" value="${eventObj.customEventIndex}" />
+                <input class="del-event-form-img" type="image" src="/static/x_box.png" border="0" alt="Submit" />
+            </form>`;
+    };
+
     if (eventObj.eventElemId === 'right-now') {
         innerHTML += `<div class="event-time">${dateString(eventObj.eventDateObj, true, true)}</div>`;
     } else {
@@ -553,7 +584,7 @@ function initEvent(eventObj) {
     };
 
     if ('photoPath' in eventObj) {
-        innerHTML += `<img src="../../static/kid_static/temp_site_data/event_photos/${eventObj.photoPath}" onerror="this.style.display='none'" />`;
+        innerHTML += `<img class="event-img" src="/static/kid_static/temp_site_data/event_photos/${eventObj.photoPath}" onerror="this.style.display='none'" />`;
     };
 
     const eventElem = document.createElement('div');
@@ -585,10 +616,6 @@ function initNowEvent(orderNum) {
 
 function initDataFromRequestArgs() {
 
-    for (const elem of document.getElementsByClassName('add-href-args')) {
-        elem.href = elem.href + window.location.search;  // Add request params, i.e. ?chick=corea&miles=davis
-    };
-
     const requestParams = new URLSearchParams(window.location.search);
 
     document.getElementById('title').innerHTML = requestParams.get('n');
@@ -619,10 +646,13 @@ function initDataFromRequestArgs() {
 
     const customEventsArray = requestParams.get('e').split('~~');
 
+    let eventIndex = -1;
     for (const customEventStr of customEventsArray) {
 
+        eventIndex++;
+
         const customEventArray = customEventStr.split('~');
-        const customEventObj = {eventName: customEventArray[0]};
+        const customEventObj = {eventName: customEventArray[0], customEventIndex: eventIndex};
 
         if (customEventArray[1].length === 8) {
             const calDate = [

@@ -2,14 +2,91 @@ from datetime import datetime
 from flask import Flask, render_template, request, url_for, redirect
 from admin import admin_alert_thread
 
+
 # Copyright 2023 Johnathan Pennington | All rights reserved.
 
 
 app = Flask(__name__)
 
 
+# Todo: For setup_cal_redirect(), where request.args is being repaired, say "Please doublecheck this info.",
+#  then redirect to where they wanted to go on submit.
+
+# Todo: Add back button at add_event and start_over.
+
+
+def events_str_to_list(events_str):
+    if events_str == '':
+        return []  # Otherwise, splitting an empty string would yield: events_list = [''].
+    else:
+        return events_str.split('~~')
+
+
+def get_validated_events_list(events_list):
+
+    events_list_validated = []
+
+    for event in events_list:
+
+        # Example event strings:
+        # EventNameA~99991231~1159pm (calendar date of 31-DEC-9999, with time)
+        # EventNameB~426 (gestational date of week42-day6, no time)
+
+        event_fields = event.split('~')
+        field_count = len(event_fields)
+
+        if field_count < 2 or 3 < field_count:
+            # Field_count should be either 2 (no time) or 3 (with time).
+            continue
+
+        # Validate date field.
+        date_str_len = len(event_fields[1])
+        if date_str_len != 3 and date_str_len != 8:
+            # Date_str_len should be 3 for a gestational date, or 8 for a calendar date.
+            continue
+        try:
+            int(event_fields[1])
+        except:
+            continue
+
+        # Validate time field.
+        if field_count == 3:
+            if len(event_fields[2]) != 6:
+                continue
+            try:
+                int(event_fields[2][:4])
+            except:
+                continue
+            if event_fields[2][4:] != 'am' and event_fields[2][4:] != 'pm':
+                continue
+
+        events_list_validated.append(event)  # If this line reached, event is valid.
+
+    return events_list_validated
+
+
+def setup_cal_redirect(save_custom_events=True):
+    if 'n' in request.args:
+        name = request.args['n']
+    else:
+        name = ''
+    if 'm' in request.args:
+        month = request.args['m']
+    else:
+        month = '1'
+    if 'd' in request.args:
+        day = request.args['d']
+    else:
+        day = '1'
+    if 'e' in request.args and save_custom_events:
+        return redirect(url_for('setup_calendar', n=name, m=month, d=day, e=request.args['e']))
+    else:
+        return redirect(url_for('setup_calendar', n=name, m=month, d=day))
+
+
 @app.errorhandler(404)
 def page_not_found(e):
+
     ignore_paths_starting_with = [  # Doesn't send an admin alert if request.path starts with any of these.
         '20', 'admin', 'blog', 'cms', 'feed', 'media', 'misc', 'news', 'robots', 'site', 'sito',
         'shop', 'test', 'web', 'wordpress', 'Wordpress', 'wp', 'Wp', 'xmlrpc.php',
@@ -49,30 +126,6 @@ def favicon():
     return redirect(url_for('static', filename='favicon.ico'))
 
 
-def setup_cal_redirect(save_custom_events=True):
-    if 'n' in request.args:
-        name = request.args['n']
-    else:
-        name = ''
-    if 'm' in request.args:
-        month = request.args['m']
-    else:
-        month = '1'
-    if 'd' in request.args:
-        day = request.args['d']
-    else:
-        day = '1'
-    if 'e' in request.args and save_custom_events:
-        return redirect(url_for('setup_calendar', n=name, m=month, d=day, e=request.args['e']))
-    else:
-        return redirect(url_for('setup_calendar', n=name, m=month, d=day))
-
-
-# @app.route('/repair')
-# def repair_calendar():
-#     return setup_cal_redirect()
-
-
 @app.route('/new')
 def new_calendar():
     return setup_cal_redirect(False)
@@ -103,7 +156,6 @@ def setup_calendar():
 def add_event():
 
     if 'n' not in request.args or 'm' not in request.args or 'd' not in request.args:
-        # Name and events args are required.
         return setup_cal_redirect()
 
     if request.method == 'GET':
@@ -178,6 +230,32 @@ def add_event():
                             d=request.args['d'], e=all_events_str))
 
 
+@app.route('/remove', methods=['POST'])
+def remove_event():
+
+    if 'n' not in request.args or 'm' not in request.args or 'd' not in request.args:
+        return setup_cal_redirect()
+
+    if 'e' not in request.args:
+        return redirect(url_for('calendar', n=request.args['n'], m=request.args['m'], d=request.args['d']))
+
+    try:
+        remove_index = int(request.form['index'])
+    except:
+        # Index value invalid or missing.
+        return 'Invalid request.'
+
+    events_list = events_str_to_list(request.args['e'])
+
+    if 0 <= remove_index < len(events_list):
+        del events_list[remove_index]
+
+    new_events_str = '~~'.join(events_list)
+
+    return redirect(url_for('calendar', n=request.args['n'], m=request.args['m'],
+                            d=request.args['d'], e=new_events_str))
+
+
 @app.route('/')
 def calendar():
 
@@ -196,53 +274,15 @@ def calendar():
         if len(request.args) != 3:
             # This redirect will remove all request args besides those passed into url_for.
             return redirect(url_for('calendar', n=request.args['n'], m=request.args['m'], d=request.args['d']))
-        return render_template('calendar.html', calendar_name=request.args['n'])
+        new_cal_href = url_for('new_calendar', n=request.args['n'], m=request.args['m'], d=request.args['d'])
+        add_event_href = url_for('add_event', n=request.args['n'], m=request.args['m'], d=request.args['d'])
+        return render_template('calendar.html', calendar_name=request.args['n'],
+                               new_cal_href=new_cal_href, add_event_href=add_event_href)
 
     # 'e' in request.args
 
-    if request.args['e'] == '':
-        events_list = []
-        # Otherwise, splitting an empty string would yield: events_list = [''].
-    else:
-        events_list = request.args['e'].split('~~')
-
-    events_list_validated = []
-
-    for event in events_list:
-
-        # Example event strings:
-        # EventNameA~99991231~1159pm (calendar date of 31-DEC-9999, with time)
-        # EventNameB~426 (gestational date of week42-day6, no time)
-
-        event_fields = event.split('~')
-        field_count = len(event_fields)
-
-        if field_count < 2 or 3 < field_count:
-            # Field_count should be either 2 (no time) or 3 (with time).
-            continue
-
-        # Validate date field.
-        date_str_len = len(event_fields[1])
-        if date_str_len != 3 and date_str_len != 8:
-            # Date_str_len should be 3 for a gestational date, or 8 for a calendar date.
-            continue
-        try:
-            int(event_fields[1])
-        except:
-            continue
-
-        # Validate time field.
-        if field_count == 3:
-            if len(event_fields[2]) != 6:
-                continue
-            try:
-                int(event_fields[2][:4])
-            except:
-                continue
-            if event_fields[2][4:] != 'am' and event_fields[2][4:] != 'pm':
-                continue
-
-        events_list_validated.append(event)  # If this line reached, event is valid.
+    events_list = events_str_to_list(request.args['e'])
+    events_list_validated = get_validated_events_list(events_list)
 
     if len(events_list_validated) == 0:
         # Remove 'e' from request.args.
@@ -261,7 +301,12 @@ def calendar():
 
     # 'n' in request.args, 'm' and 'd' parsable to ints, 'e' in request.args,
     # len(events_list_validated) != 0, len(events_list) == len(events_list_validated), len(request.args) == 4
-    return render_template('calendar.html', calendar_name=request.args['n'])
+    new_cal_href = url_for('new_calendar', n=request.args['n'], m=request.args['m'],
+                           d=request.args['d'], e=request.args['e'])
+    add_event_href = url_for('add_event', n=request.args['n'], m=request.args['m'],
+                             d=request.args['d'], e=request.args['e'])
+    return render_template('calendar.html', calendar_name=request.args['n'],
+                           new_cal_href=new_cal_href, add_event_href=add_event_href)
 
 
 if __name__ == '__main__':

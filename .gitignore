@@ -1,0 +1,15 @@
+.DS_Store
+.idea/
+__pycache__/
+venv/
+site-data/
+temp_site_data/
+
+# Ignore everything within the temp_site_data folder besides the event_photos folder.
+# static/kid_static/temp_site_data/*
+# !static/kid_static/temp_site_data/event_photos/
+
+# Ignore everything within the event_photos folder besides the .gitkeep file.
+# .gitkeep exists to ensure that the temp_site_data/event_photos/ directories are created even without any other content.
+# static/kid_static/temp_site_data/event_photos/*
+# !.gitkeep
