@@ -10,9 +10,9 @@ app = Flask(__name__)
 
 
 # Todo: For setup_cal_redirect(), where request.args is being repaired, say "Please doublecheck this info.",
-#  then redirect to where they wanted to go on submit.
+#  then redirect to where they wanted to go after submit.
 
-# Todo: Add back button at add_event and start_over.
+# Todo: Add back button at add_event and start_over pages.
 
 
 def events_str_to_list(events_str):
@@ -310,5 +310,4 @@ def calendar():
 
 
 if __name__ == '__main__':
-    # app.run(debug=True, host='192.168.0.111')
-    app.run(debug=True)
+    app.run()
