@@ -22,6 +22,23 @@ def events_str_to_list(events_str):
         return events_str.split('~~')
 
 
+def url_for_calendar(n=None, m=None, d=None, e=None, external=False):
+    if n is None:
+        n = request.args['n']
+    if m is None:
+        m = request.args['m']
+    if d is None:
+        d = request.args['d']
+    if e is None:
+        if 'e' in request.args:
+            e = request.args['e']
+    if e is None:
+        return url_for('calendar', n=n, m=m, d=d, _external=external)
+    else:
+        # Don't include e in request.args.
+        return url_for('calendar', n=n, m=m, d=d, e=e, _external=external)
+
+
 def get_validated_events_list(events_list):
 
     events_list_validated = []
@@ -91,7 +108,7 @@ def page_not_found(e):
         '20', 'admin', 'blog', 'cms', 'feed', 'media', 'misc', 'news', 'robots', 'site', 'sito',
         'shop', 'test', 'web', 'wordpress', 'Wordpress', 'wp', 'Wp', 'xmlrpc.php',
     ]
-    site_root = url_for('calendar', _external=True).split('//', 1)[-1][:-1]
+    site_root = url_for_calendar(external=True).split('//', 1)[-1][:-1]
     # Siteroot includes domain, but removes http:// or https:// if present, and removes the final forward slash.
     a_text = site_root
     rel_path = '/'
@@ -139,12 +156,7 @@ def setup_calendar():
     if request.method == 'POST':
         if 'n' in request.form and 'm' in request.form and 'd' in request.form:
             name = request.form['n'].replace('~', '')  # Remove all tildes, which delimits the url event data.
-            if 'e' in request.args:
-                return redirect(url_for('calendar', n=name, m=request.form['m'],
-                                        d=request.form['d'], e=request.args['e']))
-            else:
-                # Don't include e in request.args.
-                return redirect(url_for('calendar', n=name, m=request.form['m'], d=request.form['d']))
+            return redirect(url_for_calendar(n=name, m=request.form['m'], d=request.form['d']))
         return 'Invalid request.'
 
     # request.method == 'GET'
@@ -226,8 +238,7 @@ def add_event():
         all_events_str = ''
 
     all_events_str += '~'.join(new_event_arg_list)
-    return redirect(url_for('calendar', n=request.args['n'], m=request.args['m'],
-                            d=request.args['d'], e=all_events_str))
+    return redirect(url_for_calendar(e=all_events_str))
 
 
 @app.route('/remove', methods=['POST'])
@@ -237,7 +248,7 @@ def remove_event():
         return setup_cal_redirect()
 
     if 'e' not in request.args:
-        return redirect(url_for('calendar', n=request.args['n'], m=request.args['m'], d=request.args['d']))
+        return redirect(url_for_calendar())
 
     try:
         remove_index = int(request.form['index'])
@@ -252,8 +263,7 @@ def remove_event():
 
     new_events_str = '~~'.join(events_list)
 
-    return redirect(url_for('calendar', n=request.args['n'], m=request.args['m'],
-                            d=request.args['d'], e=new_events_str))
+    return redirect(url_for_calendar(e=new_events_str))
 
 
 @app.route('/')
@@ -273,11 +283,11 @@ def calendar():
     if 'e' not in request.args:
         if len(request.args) != 3:
             # This redirect will remove all request args besides those passed into url_for.
-            return redirect(url_for('calendar', n=request.args['n'], m=request.args['m'], d=request.args['d']))
+            return redirect(url_for_calendar())
         new_cal_href = url_for('new_calendar', n=request.args['n'], m=request.args['m'], d=request.args['d'])
         add_event_href = url_for('add_event', n=request.args['n'], m=request.args['m'], d=request.args['d'])
-        return render_template('calendar.html', calendar_name=request.args['n'],
-                               new_cal_href=new_cal_href, add_event_href=add_event_href)
+        return render_template('calendar.html', calendar_name=request.args['n'], new_cal_href=new_cal_href,
+                               add_event_href=add_event_href)
 
     # 'e' in request.args
 
@@ -286,18 +296,16 @@ def calendar():
 
     if len(events_list_validated) == 0:
         # Remove 'e' from request.args.
-        return redirect(url_for('calendar', n=request.args['n'], m=request.args['m'], d=request.args['d']))
+        return redirect(url_for_calendar())
 
     if len(events_list) != len(events_list_validated):
         # Remove invalid events within request.args.
         events_str = '~~'.join(events_list_validated)
-        return redirect(url_for('calendar', n=request.args['n'], m=request.args['m'],
-                                d=request.args['d'], e=events_str))
+        return redirect(url_for_calendar(e=events_str))
 
     if len(request.args) != 4:
         # This redirect will remove all request args besides those passed into url_for.
-        return redirect(url_for('calendar', n=request.args['n'], m=request.args['m'],
-                                d=request.args['d'], e=request.args['e']))
+        return redirect(url_for_calendar())
 
     # 'n' in request.args, 'm' and 'd' parsable to ints, 'e' in request.args,
     # len(events_list_validated) != 0, len(events_list) == len(events_list_validated), len(request.args) == 4
@@ -305,8 +313,8 @@ def calendar():
                            d=request.args['d'], e=request.args['e'])
     add_event_href = url_for('add_event', n=request.args['n'], m=request.args['m'],
                              d=request.args['d'], e=request.args['e'])
-    return render_template('calendar.html', calendar_name=request.args['n'],
-                           new_cal_href=new_cal_href, add_event_href=add_event_href)
+    return render_template('calendar.html', calendar_name=request.args['n'], new_cal_href=new_cal_href,
+                           add_event_href=add_event_href)
 
 
 if __name__ == '__main__':

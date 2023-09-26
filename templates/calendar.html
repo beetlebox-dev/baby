@@ -4,7 +4,7 @@
 
 <head>
 
-    <title>{{ calendar_name }}</title>
+    <title>BabyTime | {{ calendar_name }}</title>
     {% include "head_all.html" %}
 
     <style>
@@ -24,6 +24,11 @@
             color: white;
             background-color: black;
             border: 3px solid grey;
+        }
+
+        button.clicked-share-button {
+            color: black;
+            background-color: white;
         }
 
         button:hover {
@@ -127,6 +132,7 @@
 
     <a href="{{ new_cal_href }}"><button>Start Over</button></a>
     <a href="{{ add_event_href }}"><button>Add Event</button></a>
+    <button id="share-button" onClick="getShareLink()">Copy Share Link</button>
 
     <hr>
 
@@ -158,7 +164,7 @@ let debugTimeJumpHours = 0;
 
 
 // INIT VARIABLES
-let wk0dy0, now;
+let wk0dy0, now, shareButtonTimeoutId;
 let topHue = 0;  // Top hue starts as red.
 let events = [
     // Starts with default events. Custom events added later in script.
@@ -194,6 +200,20 @@ window.addEventListener('focus', scheduleAudit);
 
 
 // FUNCTIONS
+
+
+function getShareLink() {
+    clearTimeout(shareButtonTimeoutId);
+    const shareLink = window.location.href;
+    navigator.clipboard.writeText(shareLink);
+    const shareButton = document.getElementById('share-button');
+    shareButton.classList.add('clicked-share-button');
+    shareButton.innerHTML = 'Copied to clipboard';
+    shareButtonTimeoutId = setTimeout(() => {
+        shareButton.innerHTML = 'Copy Share Link';
+        shareButton.classList.remove('clicked-share-button');
+    }, 5000);
+};
 
 
 // Weight Counter
