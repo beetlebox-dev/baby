@@ -7,7 +7,7 @@ __pycache__/
 venv/
 google/
 site-data/
-temp_site_data/
+# temp_site_data/
 
 # Ignore everything within the temp_site_data folder besides the event_photos folder.
 # static/kid_static/temp_site_data/*
