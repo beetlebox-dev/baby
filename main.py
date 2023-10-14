@@ -14,6 +14,8 @@ app = Flask(__name__)
 
 # Todo: Add back button at add_event and start_over pages.
 
+# Todo: Help calculate due date at start???
+
 
 def events_str_to_list(events_str):
     if events_str == '':
@@ -32,10 +34,10 @@ def url_for_calendar(n=None, m=None, d=None, e=None, external=False):
     if e is None:
         if 'e' in request.args:
             e = request.args['e']
-    if e is None:
+    if e is None or e == '':
+        # Don't include e in request.args.
         return url_for('calendar', n=n, m=m, d=d, _external=external)
     else:
-        # Don't include e in request.args.
         return url_for('calendar', n=n, m=m, d=d, e=e, _external=external)
 
 
@@ -294,8 +296,11 @@ def calendar():
     events_list = events_str_to_list(request.args['e'])
     events_list_validated = get_validated_events_list(events_list)
 
+    print(events_list, events_list_validated)
+
     if len(events_list_validated) == 0:
         # Remove 'e' from request.args.
+        print(url_for_calendar())
         return redirect(url_for_calendar())
 
     if len(events_list) != len(events_list_validated):
