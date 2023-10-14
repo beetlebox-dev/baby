@@ -593,7 +593,8 @@ function initEvent(eventObj) {
     };
 
     const pregTime = getPregTime(eventObj.eventDateObj);
-    if (pregTime[2] === false || eventObj.eventElemId === 'right-now') {  // Always include pregTime with right-now.
+    if (pregTime[2] === false || eventObj.eventElemId === 'right-now') {
+        // Always include pregTime with right-now.  ////////////// Hide until wk0dy0
         // EventDateObj is not before wk0dy0.
         innerHTML += `
         <div>

@@ -9,6 +9,8 @@ from admin import admin_alert_thread
 app = Flask(__name__)
 
 
+# TODO: Now event can show negative wkdy, see /////// in calendar.html.
+
 # Todo: For setup_cal_redirect(), where request.args is being repaired, say "Please doublecheck this info.",
 #  then redirect to where they wanted to go after submit.
 
