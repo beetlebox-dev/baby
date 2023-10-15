@@ -101,7 +101,7 @@ def setup_cal_redirect(repair_mode=True):
     if repair_mode:
         redirect_endpoint = 'repair_calendar'
     else:
-        redirect_endpoint = 'setup_calendar'
+        redirect_endpoint = 'change_calendar'
 
     if 'e' in request.args and repair_mode:
         return redirect(url_for(redirect_endpoint, n=name, m=month, d=day, e=request.args['e']))
@@ -109,7 +109,7 @@ def setup_cal_redirect(repair_mode=True):
         return redirect(url_for(redirect_endpoint, n=name, m=month, d=day))
 
 
-def setup_or_repair_calendar(mode):
+def change_or_repair_calendar(mode):
 
     if request.method == 'POST':
         if 'n' in request.form and 'm' in request.form and 'd' in request.form:
@@ -171,23 +171,23 @@ def favicon():
     return redirect(url_for('static', filename='favicon.ico'))
 
 
-@app.route('/new')
+@app.route('/')
 def new_calendar():
     return setup_cal_redirect(False)
 
 
-# Always go through setup_cal_redirect (via repair_calendar or new_calendar endpoints) for validation.
+# Always go through setup_cal_redirect (via repair_calendar or change_calendar endpoints) for validation.
+# Never come straight here.
+@app.route('/setup', methods=['GET', 'POST'])
+def change_calendar():
+    return change_or_repair_calendar('change')
+
+
+# Always go through setup_cal_redirect (via repair_calendar or change_calendar or new_calendar endpoints) for validation.
 # Never come straight here.
 @app.route('/repair', methods=['GET', 'POST'])
 def repair_calendar():
-    return setup_or_repair_calendar('repair')
-
-
-# Always go through setup_cal_redirect (via repair_calendar or new_calendar endpoints) for validation.
-# Never come straight here.
-@app.route('/setup', methods=['GET', 'POST'])
-def setup_calendar():
-    return setup_or_repair_calendar('setup')
+    return change_or_repair_calendar('repair')
 
 
 @app.route('/add', methods=['GET', 'POST'])
@@ -293,7 +293,7 @@ def remove_event():
     return redirect(url_for_calendar(e=new_events_str))
 
 
-@app.route('/')
+@app.route('/calendar')
 def calendar():
 
     if 'n' not in request.args:
