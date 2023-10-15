@@ -139,7 +139,7 @@
     <h1 id="title"></h1>
 
     <div id="calendar-box" class="larger">
-        <hr style="order: -1">
+        <hr style="order: -3">  <!-- Now event and hr can moved to -2 and -1 respectively. -->
         <!-- The rest added with JavaScript. -->
     </div>
 
@@ -159,7 +159,7 @@ let debugTimeJumpHours = 0;
 //     else if (e.key === ']') debugTimeJumpHours += 1;
 //     else if (e.key === '[') debugTimeJumpHours -= 1;
 // });
-// const debugTestNow = new Date('September 1, 2023 23:59:43');  // Change to test date and time.
+// const debugTestNow = new Date('July 5, 2024 23:59:43');  // Change to test date and time.
 // const nowMsecOffset = debugTestNow.getTime() - Date.now();
 
 
@@ -593,11 +593,13 @@ function initEvent(eventObj) {
     };
 
     const pregTime = getPregTime(eventObj.eventDateObj);
-    if (pregTime[2] === false || eventObj.eventElemId === 'right-now') {
-        // Always include pregTime with right-now.  ////////////// Hide until wk0dy0
-        // EventDateObj is not before wk0dy0.
+    const beforeWk0Dy0 = pregTime[2];
+    if (beforeWk0Dy0 === false || eventObj.eventElemId === 'right-now') {
+        // EventDateObj is not before wk0dy0, or this is the now event.
+        // Always include pregTime with right-now, because after a day tick, it may become wk0dy0 (hide until then).
+        const display = beforeWk0Dy0 ? 'none' : 'block';
         innerHTML += `
-        <div>
+        <div class="gest-time" style="display: ${display}">
             <span class="bold preg-wk-value">${pregTime[0]}</span><span class="smaller"> weeks </span>
             <span class="bold preg-dy-value">${pregTime[1]}</span><span class="smaller"> days</span>
         </div>
@@ -779,8 +781,12 @@ function secondTick(secondsToAdd=1, forceCheckPregTime=false) {
     const dayTick = now.getDate() !== prevDate || Math.abs(now.getTime() - prevTimestamp) > 86400000;
     if (dayTick || forceCheckPregTime) {
         const nowPregTime = getPregTime(now);
-        document.querySelector('#right-now .preg-wk-value').innerHTML = nowPregTime[0];
-        document.querySelector('#right-now .preg-dy-value').innerHTML = nowPregTime[1];
+        if (nowPregTime[2] === false) {
+            // Now is week 0 day 0 or later.
+            document.querySelector('#right-now .gest-time').style.display = 'block';
+            document.querySelector('#right-now .preg-wk-value').innerHTML = nowPregTime[0];
+            document.querySelector('#right-now .preg-dy-value').innerHTML = nowPregTime[1];
+        };
     };
 
     const actualNow = getCurrentDateObj();

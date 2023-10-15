@@ -86,3 +86,12 @@ button:hover {
     border-color: hsl(270, 40%, 60%);
     background-color: hsl(270, 100%, 20%);
 }
+
+a {
+    text-decoration: none;
+    color: hsl(70, 100%, 20%);
+}
+
+a:hover {
+    color: hsl(270, 100%, 20%);
+}

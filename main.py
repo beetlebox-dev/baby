@@ -9,12 +9,8 @@ from admin import admin_alert_thread
 app = Flask(__name__)
 
 
-# TODO: Now event can show negative wkdy, see /////// in calendar.html.
-
 # Todo: For setup_cal_redirect(), where request.args is being repaired, say "Please doublecheck this info.",
 #  then redirect to where they wanted to go after submit.
-
-# Todo: Add back button at add_event and start_over pages.
 
 # Todo: Help calculate due date at start???
 
@@ -86,7 +82,9 @@ def get_validated_events_list(events_list):
     return events_list_validated
 
 
-def setup_cal_redirect(save_custom_events=True):
+def setup_cal_redirect(repair_mode=True):
+    # Repair mode saves existing events, and prompts user to check info.
+
     if 'n' in request.args:
         name = request.args['n']
     else:
@@ -99,10 +97,36 @@ def setup_cal_redirect(save_custom_events=True):
         day = request.args['d']
     else:
         day = '1'
-    if 'e' in request.args and save_custom_events:
-        return redirect(url_for('setup_calendar', n=name, m=month, d=day, e=request.args['e']))
+
+    if repair_mode:
+        redirect_endpoint = 'repair_calendar'
     else:
-        return redirect(url_for('setup_calendar', n=name, m=month, d=day))
+        redirect_endpoint = 'setup_calendar'
+
+    if 'e' in request.args and repair_mode:
+        return redirect(url_for(redirect_endpoint, n=name, m=month, d=day, e=request.args['e']))
+    else:
+        return redirect(url_for(redirect_endpoint, n=name, m=month, d=day))
+
+
+def setup_or_repair_calendar(mode):
+
+    if request.method == 'POST':
+        if 'n' in request.form and 'm' in request.form and 'd' in request.form:
+            name = request.form['n'].replace('~', '')  # Remove all tildes, which delimits the url event data.
+            return redirect(url_for_calendar(n=name, m=request.form['m'], d=request.form['d']))
+        return 'Invalid request.'
+
+    if mode == 'repair':
+        button_text = 'Confirm'
+        repair_message_display = 'block'
+    else:
+        button_text = 'Create Calendar'
+        repair_message_display = 'none'
+
+    # request.method == 'GET'
+    return render_template('init_calendar.html', name=request.args['n'], month=request.args['m'], day=request.args['d'],
+                           button_text=button_text, repair_message_display=repair_message_display)
 
 
 @app.errorhandler(404)
@@ -154,18 +178,16 @@ def new_calendar():
 
 # Always go through setup_cal_redirect (via repair_calendar or new_calendar endpoints) for validation.
 # Never come straight here.
+@app.route('/repair', methods=['GET', 'POST'])
+def repair_calendar():
+    return setup_or_repair_calendar('repair')
+
+
+# Always go through setup_cal_redirect (via repair_calendar or new_calendar endpoints) for validation.
+# Never come straight here.
 @app.route('/setup', methods=['GET', 'POST'])
 def setup_calendar():
-
-    if request.method == 'POST':
-        if 'n' in request.form and 'm' in request.form and 'd' in request.form:
-            name = request.form['n'].replace('~', '')  # Remove all tildes, which delimits the url event data.
-            return redirect(url_for_calendar(n=name, m=request.form['m'], d=request.form['d']))
-        return 'Invalid request.'
-
-    # request.method == 'GET'
-    return render_template('init_calendar.html',
-                           name=request.args['n'], month=request.args['m'], day=request.args['d'])
+    return setup_or_repair_calendar('setup')
 
 
 @app.route('/add', methods=['GET', 'POST'])
@@ -175,7 +197,8 @@ def add_event():
         return setup_cal_redirect()
 
     if request.method == 'GET':
-        return render_template('add_event.html', calendar_name=request.args['n'], current_year=datetime.now().year)
+        return render_template('add_event.html', go_back_href=url_for_calendar(),
+                               calendar_name=request.args['n'], current_year=datetime.now().year)
 
     # request.method == 'POST':
 
@@ -325,4 +348,4 @@ def calendar():
 
 
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)

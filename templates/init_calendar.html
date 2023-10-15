@@ -14,6 +14,8 @@
 <form action="" method="POST">
 <div id="main-box">
 
+    <h3 style="display: {{ repair_message_display }}">Please double-check this info...</h3>
+
     <div class="form-group">
         <label for="name">Calendar Name</label>
         <input type="text" id="name" name="n" value="{{ name }}" placeholder='"Baby Calendar!"' required />
@@ -41,7 +43,7 @@
         </div>
     </div>
 
-    <button class="form-group" type="submit">Create Calendar</button>
+    <button class="form-group" type="submit">{{ button_text }}</button>
 
 </div>
 </form>
