@@ -321,12 +321,9 @@ def calendar():
     events_list = events_str_to_list(request.args['e'])
     events_list_validated = get_validated_events_list(events_list)
 
-    print(events_list, events_list_validated)
-
     if len(events_list_validated) == 0:
         # Remove 'e' from request.args.
-        print(url_for_calendar())
-        return redirect(url_for_calendar())
+        return redirect(url_for_calendar(e=''))
 
     if len(events_list) != len(events_list_validated):
         # Remove invalid events within request.args.
