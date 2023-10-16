@@ -38,7 +38,7 @@
                 <option value="11" {% if month == "11" %}selected{% endif %}>November</option>
                 <option value="12" {% if month == "12" %}selected{% endif %}>December</option>
             </select
-            ><input type="number" name="d" value="{{ day }}" min="1" max="31" step="1" required />
+            ><input type="number" pattern="[0-9]*" name="d" value="{{ day }}" min="1" max="31" step="1" required />
             <!-- Eliminate whitespace above with ><input ... -->
         </div>
     </div>
