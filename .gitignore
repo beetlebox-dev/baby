@@ -3,6 +3,8 @@
 __pycache__/
 venv/
 site-data/
+gmail_api_store/
+gmail_api_temp/
 # temp_site_data/
 
 # Ignore everything within the temp_site_data folder besides the event_photos folder.
